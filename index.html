@@ -7,110 +7,192 @@
     <link rel="stylesheet" href="style.css">
 </head>
 <body>
-    <!-- Page d'accueil avec carousel -->
-    <div class="maincontent" id="homepage">
+    <!-- Vidéos en arrière-plan -->
+    <div class="video-background">
         <video class="video1" autoplay muted loop>
             <source src="video1.mp4" type="video/mp4">
         </video>
         <video class="video2" autoplay muted loop>
             <source src="video2.mp4" type="video/mp4">
         </video>
-        
-        <h1 id="mainTitle">Ctrl+Alt+Histoire</h1>
-        <h3 id="mainSubtitle">Choisissez votre quiz</h3>
-        
-        <!-- Carousel de cartes -->
-        <div class="carousel-container">
-            <div class="carousel-track" id="carouselTrack">
-                <!-- Les cartes seront générées dynamiquement -->
+    </div>
+    <div class="cursor-halo" id="halo"></div>
+    <!-- Page d'accueil -->
+    <div class="homepage" id="homepage">
+        <div class="homepage-header">
+            <h1 class="main-title">Ctrl+Alt+Histoire</h1>
+            <p class="main-subtitle">Testez vos connaissances en informatique</p>
+        </div>
+
+        <!-- Cartes principales -->
+        <div class="main-cards-container">
+            <div class="main-card" id="presetQuizCard">
+                <h2 class="card-title">Quiz Histoire Informatique</h2>
+                <p class="card-description">Questionnaire sur l'évolution de l'informatique</p>
+                <div class="card-footer">
+                    <span class="card-meta">5 questions · 5 min</span>
+                </div>
+            </div>
+
+            <div class="main-card" id="createQuizCard">
+                <h2 class="card-title">Créer un Quiz</h2>
+                <p class="card-description">Créez votre propre questionnaire personnalisé</p>
+                <div class="card-footer">
+                    <span class="card-meta">Éditeur intuitif</span>
+                </div>
             </div>
         </div>
-    </div>
 
-    <!-- Page de création de quiz -->
-    <div class="create-quiz-page" id="createQuizPage" style="display: none;">
-        <h1>Créer votre Quiz</h1>
-        
-        <div class="quiz-config">
-            <h2>Configuration du Quiz</h2>
-            <label>Titre du quiz:
-                <input type="text" id="quizTitle" value="Mon Quiz">
-            </label>
-            <label>Sous-titre:
-                <input type="text" id="quizSubtitle" value="Description du quiz">
-            </label>
-            <label>Description (pour la carte):
-                <input type="text" id="quizDescription" value="Testez vos connaissances">
-            </label>
-            <label>Durée (secondes):
-                <input type="number" id="quizDuration" value="300">
-            </label>
-            <label>Image de la carte (URL):
-                <input type="text" id="quizCardImage" placeholder="https://...">
-            </label>
-        </div>
-        
-        <div class="questions-list" id="questionsList">
-            <h2>Questions</h2>
-            <div id="questionsContainer"></div>
-            <button id="addQuestionBtn" class="action-btn">+ Ajouter une question</button>
-        </div>
-        
-        <div class="actions">
-            <button id="saveQuizBtn" class="action-btn">Télécharger le quiz (JSON)</button>
-            <button id="previewQuizBtn" class="action-btn">Prévisualiser</button>
-            <button id="backFromCreateBtn" class="action-btn">Retour au menu</button>
+        <!-- Section des quiz importés -->
+        <div class="imported-section">
+            <div class="section-header">
+                <h3 class="section-title">Mes Quiz Importés</h3>
+                <button class="import-btn" id="importQuizBtn">
+                    <span class="btn-icon">↑</span>
+                    Importer un quiz
+                </button>
+            </div>
+            
+            <div class="imported-quizzes-grid" id="importedQuizzesGrid">
+                <!-- Message vide au début -->
+                <div class="empty-state" id="emptyState">
+                    <p>Aucun quiz importé</p>
+                    <p class="empty-hint">Cliquez sur "Importer un quiz" pour ajouter vos propres questionnaires</p>
+                </div>
+            </div>
         </div>
     </div>
 
     <!-- Input file caché -->
     <input type="file" id="jsonFileInput" accept=".json" style="display: none;">
 
-    <!-- Page du quiz -->
-    <div class="quiz" id="quizpage">
-        <div class="left">
-            <div class="quizz_header">
-                <div class="question_titlebox">
-                    <h3 id="questionText">Question</h3>
-                    <button id="nextBtn">Next Question</button>
-                </div>
-                
-                <div class="supp">
-                    <div class="time_progress">
-                        <h6 id="timeDisplay">Temps: 0s / 0s</h6>
+    <!-- Page de création de quiz -->
+    <div class="create-quiz-page" id="createQuizPage" style="display: none;">
+        <div class="page-header">
+            <button id="backFromCreateBtn" class="back-btn">← Retour</button>
+            <h1 class="page-title">Créer un Quiz</h1>
+            <div></div>
+        </div>
+        
+        <div class="create-content">
+            <div class="config-section">
+                <h2 class="section-heading">Configuration</h2>
+                <div class="form-grid">
+                    <div class="form-group">
+                        <label class="form-label">Titre du quiz</label>
+                        <input type="text" id="quizTitle" class="form-input" value="Mon Quiz">
                     </div>
-                    <div class="advencement_progress">
-                        <h6 id="progressDisplay">Question: 0 / 0</h6>
+                    <div class="form-group">
+                        <label class="form-label">Sous-titre</label>
+                        <input type="text" id="quizSubtitle" class="form-input" value="Description du quiz">
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">Description</label>
+                        <input type="text" id="quizDescription" class="form-input" value="Testez vos connaissances">
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">Durée (secondes)</label>
+                        <input type="number" id="quizDuration" class="form-input" value="300">
                     </div>
                 </div>
             </div>
+            
+            <div class="questions-section">
+                <div class="section-header-inline">
+                    <h2 class="section-heading">Questions</h2>
+                    <button id="addQuestionBtn" class="btn-secondary">+ Ajouter</button>
+                </div>
+                <div id="questionsContainer"></div>
+            </div>
+            
+            <div class="actions-bar">
+                <button id="saveQuizBtn" class="btn-primary">Télécharger le quiz</button>
+                <button id="previewQuizBtn" class="btn-secondary">Prévisualiser</button>
+            </div>
+        </div>
+    </div>
 
-            <div class="down">
-                <div class="answer">
-                    <div class="question_place1" data-answer="0"></div>
-                    <div class="question_place2" data-answer="1"></div>
-                    <div class="question_place3" data-answer="2"></div>
-                    <div class="question_place4" data-answer="3"></div>
+    <!-- Page du quiz -->
+    <div class="quiz-page" id="quizpage">
+        <div class="quiz-header">
+            <div class="quiz-progress-info">
+                <span id="progressDisplay" class="progress-text">Question 1 / 5</span>
+                <span id="timeDisplay" class="time-text">0s / 300s</span>
+            </div>
+            <div class="progress-bars">
+                <div class="progress-bar">
+                    <div class="progress-fill" id="questionProgressFill"></div>
+                </div>
+                <div class="progress-bar time-bar">
+                    <div class="progress-fill" id="timeProgressFill"></div>
                 </div>
             </div>
         </div>
 
-        <div class="right">
-            <div class="picture_place">
-                <img id="questionImage" src="" alt="Question image" style="display: none;">
+        <div class="quiz-content">
+            <div class="quiz-main">
+                <h2 id="questionText" class="question-text">Question</h2>
+                
+                <div class="answers-grid">
+                    <div class="answer-card" data-answer="0">
+                        <div class="answer-content">
+                            <span class="answer-label">A</span>
+                            <span class="answer-text"></span>
+                        </div>
+                    </div>
+                    <div class="answer-card" data-answer="1">
+                        <div class="answer-content">
+                            <span class="answer-label">B</span>
+                            <span class="answer-text"></span>
+                        </div>
+                    </div>
+                    <div class="answer-card" data-answer="2">
+                        <div class="answer-content">
+                            <span class="answer-label">C</span>
+                            <span class="answer-text"></span>
+                        </div>
+                    </div>
+                    <div class="answer-card" data-answer="3">
+                        <div class="answer-content">
+                            <span class="answer-label">D</span>
+                            <span class="answer-text"></span>
+                        </div>
+                    </div>
+                </div>
+
+                <button id="nextBtn" class="btn-primary quiz-next-btn">Question suivante →</button>
+            </div>
+
+            <div class="quiz-sidebar">
+                <div class="question-image-container">
+                    <img id="questionImage" src="" alt="Question image">
+                </div>
             </div>
         </div>
     </div>
 
     <!-- Page de résultats -->
-    <div class="results" id="resultspage" style="display: none;">
-        <h1>Résultats</h1>
-        <h2 id="scoreDisplay"></h2>
-        <div id="detailedResults"></div>
-        <button id="restartBtn">Recommencer</button>
+    <div class="results-page" id="resultspage" style="display: none;">
+        <div class="results-container">
+            <div class="results-header">
+                <h1 class="results-title">Résultats</h1>
+                <div class="score-card">
+                    <h2 id="scoreDisplay" class="score-text"></h2>
+                    <p id="certificateId" style="color: #888888; font-size: 0.9rem; margin-top: 10px;"></p>
+                </div>
+            </div>
+            
+            <div class="results-actions">
+                <button id="downloadCertificateBtn" class="download-certificate-btn">Télécharger le certificat</button>
+                <button id="restartBtn" class="btn-primary">Retour au menu</button>
+            </div>
+            
+            <div class="results-details" id="detailedResults"></div>
+        </div>
     </div>
 
     <script src="quiz.js"></script>
 </body>
+</html>
 </html>
 </html>
