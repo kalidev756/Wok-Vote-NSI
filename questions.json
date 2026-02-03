@@ -1,0 +1,101 @@
+{
+  "quiz": {
+    "title": "Ctrl+Alt+Histoire",
+    "subtitle": "Quand le code reboot son histoire",
+    "description": "Testez vos connaissances sur l'histoire de l'informatique",
+    "cardImage": "preset-card.jpg",
+    "duration": 300,
+    "questions": [
+      {
+        "id": 1,
+        "question": "Quelle est la première génération d'ordinateur ?",
+        "answers": [
+          "À tubes à vide (1940-1956)",
+          "À transistors (1956-1963)",
+          "À circuits intégrés (1964-1971)",
+          "À microprocesseurs (1971-présent)"
+        ],
+        "correctAnswer": 0,
+        "image": "",
+        "answerImages": [
+          "carre.jpg",
+          "triangle.avif",
+          "rond_simple.png",
+          "losange.png"
+        ]
+      },
+      {
+        "id": 2,
+        "question": "Qui a inventé le World Wide Web ?",
+        "answers": [
+          "Bill Gates",
+          "Steve Jobs",
+          "Tim Berners-Lee",
+          "Mark Zuckerberg"
+        ],
+        "correctAnswer": 2,
+        "image": "",
+        "answerImages": [
+          "carre.jpg",
+          "triangle.avif",
+          "rond_simple.png",
+          "losange.png"
+        ]
+      },
+      {
+        "id": 3,
+        "question": "En quelle année a été créé le premier ordinateur personnel ?",
+        "answers": [
+          "1975",
+          "1981",
+          "1984",
+          "1990"
+        ],
+        "correctAnswer": 0,
+        "image": "",
+        "answerImages": [
+          "carre.jpg",
+          "triangle.avif",
+          "rond_simple.png",
+          "losange.png"
+        ]
+      },
+      {
+        "id": 4,
+        "question": "Quel langage de programmation a été créé en premier ?",
+        "answers": [
+          "Python",
+          "Java",
+          "Fortran",
+          "C++"
+        ],
+        "correctAnswer": 2,
+        "image": "",
+        "answerImages": [
+          "carre.jpg",
+          "triangle.avif",
+          "rond_simple.png",
+          "losange.png"
+        ]
+      },
+      {
+        "id": 5,
+        "question": "Qu'est-ce que l'ENIAC ?",
+        "answers": [
+          "Un système d'exploitation",
+          "Le premier ordinateur électronique",
+          "Un langage de programmation",
+          "Un navigateur web"
+        ],
+        "correctAnswer": 1,
+        "image": "",
+        "answerImages": [
+          "carre.jpg",
+          "triangle.avif",
+          "rond_simple.png",
+          "losange.png"
+        ]
+      }
+    ]
+  }
+}
