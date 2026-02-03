@@ -107,6 +107,7 @@ body {
     margin-bottom: 20px;
     position: relative;
     min-height: 300px;
+    max-height: 500px;
     display: flex;
     align-items: center;
     justify-content: center;
@@ -115,7 +116,9 @@ body {
 .scanner-container video {
     width: 100%;
     height: auto;
+    max-height: 500px;
     display: block;
+    object-fit: cover;
 }
 
 .scanner-status {
@@ -126,6 +129,7 @@ body {
 
 .scanner-status.scanning {
     color: #4ade80;
+    font-weight: 500;
 }
 
 .scanner-status.error {
