@@ -8,25 +8,20 @@
     "questions": [
       {
         "id": 1,
-        "question": "Quelle est la première génération d'ordinateur ?",
+        "question": "Quelle est la premiere generation d'ordinateur ?",
         "answers": [
-          "À tubes à vide (1940-1956)",
-          "À transistors (1956-1963)",
-          "À circuits intégrés (1964-1971)",
-          "À microprocesseurs (1971-présent)"
+          "A tubes a vide (1940-1956)",
+          "A transistors (1956-1963)",
+          "A circuits integres (1964-1971)",
+          "A microprocesseurs (1971-present)"
         ],
         "correctAnswer": 0,
         "image": "",
-        "answerImages": [
-          "carre.jpg",
-          "triangle.avif",
-          "rond_simple.png",
-          "losange.png"
-        ]
+        "answerImages": []
       },
       {
         "id": 2,
-        "question": "Qui a inventé le World Wide Web ?",
+        "question": "Qui a invente le World Wide Web ?",
         "answers": [
           "Bill Gates",
           "Steve Jobs",
@@ -35,16 +30,11 @@
         ],
         "correctAnswer": 2,
         "image": "",
-        "answerImages": [
-          "carre.jpg",
-          "triangle.avif",
-          "rond_simple.png",
-          "losange.png"
-        ]
+        "answerImages": []
       },
       {
         "id": 3,
-        "question": "En quelle année a été créé le premier ordinateur personnel ?",
+        "question": "En quelle annee a ete cree le premier ordinateur personnel ?",
         "answers": [
           "1975",
           "1981",
@@ -53,16 +43,11 @@
         ],
         "correctAnswer": 0,
         "image": "",
-        "answerImages": [
-          "carre.jpg",
-          "triangle.avif",
-          "rond_simple.png",
-          "losange.png"
-        ]
+        "answerImages": []
       },
       {
         "id": 4,
-        "question": "Quel langage de programmation a été créé en premier ?",
+        "question": "Quel langage de programmation a ete cree en premier ?",
         "answers": [
           "Python",
           "Java",
@@ -71,33 +56,21 @@
         ],
         "correctAnswer": 2,
         "image": "",
-        "answerImages": [
-          "carre.jpg",
-          "triangle.avif",
-          "rond_simple.png",
-          "losange.png"
-        ]
+        "answerImages": []
       },
       {
         "id": 5,
         "question": "Qu'est-ce que l'ENIAC ?",
         "answers": [
-          "Un système d'exploitation",
-          "Le premier ordinateur électronique",
+          "Un systeme d'exploitation",
+          "Le premier ordinateur electronique",
           "Un langage de programmation",
           "Un navigateur web"
         ],
         "correctAnswer": 1,
         "image": "",
-        "answerImages": [
-          "carre.jpg",
-          "triangle.avif",
-          "rond_simple.png",
-          "losange.png"
-        ]
+        "answerImages": []
       }
     ]
-  }
-}
   }
 }
