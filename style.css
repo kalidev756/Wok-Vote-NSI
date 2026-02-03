@@ -1,1 +1,75 @@
 
+.maincontent {
+    background-color: black;
+    height: 100vh;
+    width: 100%; 
+    position: fixed;
+    top: 0;
+    left: 0;
+    z-index: 1;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    text-align: center;
+    display: flex;
+}
+
+
+h1, h3, h4{
+    color: white;
+}
+
+.quiz {
+    background-color: red;
+    display: flex;
+    height: 100vh;
+    position: relative; 
+    z-index: 2;         
+    margin-top: 100vh; 
+}
+
+.question_place1, .question_place2, .question_place3, .question_place4{
+    background-color: black;
+    color: white;
+    border: 2px solid white;
+    padding: 10px;
+    margin: 10px;
+    cursor: pointer;
+    flex: 1;
+}
+
+.left{
+    flex: 4;
+    display: flex;
+    flex-direction: column;
+}
+.right{
+    background-color: green;
+    flex: 1;
+}
+
+button{
+    background-color: blue;
+    color: white;
+    padding: 10px 20px;
+    border: none;
+    cursor: pointer;
+}
+
+.supp {
+    flex: 1;
+    background-color: aqua;
+    display: flex;
+}
+
+.down {
+    flex: 1;
+    background-color: beige;
+    display: flex;
+}
+
+.video1, .video2{
+    flex: 1;
+}
+
