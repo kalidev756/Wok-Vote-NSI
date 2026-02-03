@@ -8,6 +8,7 @@ let elapsedTime = 0;
 let createdQuiz = null;
 let importedQuizzes = []; // Stockage des quiz importés
 let certificateId = ''; // ID du certificat
+let currentQrQuiz = null; // Quiz actuellement affiché dans la modal QR
 
 // Éléments DOM
 const homepage = document.getElementById('homepage');
@@ -18,10 +19,23 @@ const jsonFileInput = document.getElementById('jsonFileInput');
 const importedQuizzesGrid = document.getElementById('importedQuizzesGrid');
 const emptyState = document.getElementById('emptyState');
 
+// Modals
+const qrModal = document.getElementById('qrModal');
+const qrModalClose = document.getElementById('qrModalClose');
+const qrCodeContainer = document.getElementById('qrCodeContainer');
+const downloadQrBtn = document.getElementById('downloadQrBtn');
+
+const scannerModal = document.getElementById('scannerModal');
+const scannerModalClose = document.getElementById('scannerModalClose');
+const scannerVideo = document.getElementById('scannerVideo');
+const scannerCanvas = document.getElementById('scannerCanvas');
+const scannerStatus = document.getElementById('scannerStatus');
+
 // Boutons
 const presetQuizCard = document.getElementById('presetQuizCard');
 const createQuizCard = document.getElementById('createQuizCard');
 const importQuizBtn = document.getElementById('importQuizBtn');
+const scanQrBtn = document.getElementById('scanQrBtn');
 const nextBtn = document.getElementById('nextBtn');
 const restartBtn = document.getElementById('restartBtn');
 const downloadCertificateBtn = document.getElementById('downloadCertificateBtn');
@@ -34,6 +48,142 @@ const questionImage = document.getElementById('questionImage');
 const answerCards = document.querySelectorAll('.answer-card');
 const questionProgressFill = document.getElementById('questionProgressFill');
 const timeProgressFill = document.getElementById('timeProgressFill');
+
+// ==================== QR CODE FUNCTIONS ====================
+
+function showQrModal(quiz) {
+    currentQrQuiz = quiz;
+    qrCodeContainer.innerHTML = '';
+    
+    // Créer le JSON du quiz
+    const quizJson = JSON.stringify({ quiz: quiz });
+    
+    // Générer le QR code
+    new QRCode(qrCodeContainer, {
+        text: quizJson,
+        width: 256,
+        height: 256,
+        colorDark: "#000000",
+        colorLight: "#ffffff",
+        correctLevel: QRCode.CorrectLevel.M
+    });
+    
+    qrModal.classList.add('active');
+}
+
+function closeQrModal() {
+    qrModal.classList.remove('active');
+    currentQrQuiz = null;
+}
+
+function downloadQrCode() {
+    const canvas = qrCodeContainer.querySelector('canvas');
+    if (!canvas) {
+        showNotification('Erreur lors de la génération du QR code', true);
+        return;
+    }
+    
+    // Créer un lien de téléchargement
+    const link = document.createElement('a');
+    link.download = `QR_${currentQrQuiz.title.replace(/\s+/g, '_')}.png`;
+    link.href = canvas.toDataURL();
+    link.click();
+    
+    showNotification('QR code téléchargé avec succès !');
+}
+
+// ==================== QR SCANNER FUNCTIONS ====================
+
+let scannerStream = null;
+let scannerAnimationFrame = null;
+
+async function openScanner() {
+    scannerModal.classList.add('active');
+    scannerStatus.textContent = 'Initialisation de la caméra...';
+    scannerStatus.className = 'scanner-status';
+    
+    try {
+        scannerStream = await navigator.mediaDevices.getUserMedia({
+            video: { facingMode: 'environment' }
+        });
+        
+        scannerVideo.srcObject = scannerStream;
+        scannerStatus.textContent = 'Scannez un QR code...';
+        scannerStatus.className = 'scanner-status scanning';
+        
+        // Démarrer la détection
+        requestAnimationFrame(scanQrCode);
+    } catch (error) {
+        console.error('Erreur caméra:', error);
+        scannerStatus.textContent = 'Impossible d\'accéder à la caméra';
+        scannerStatus.className = 'scanner-status error';
+    }
+}
+
+function closeScanner() {
+    if (scannerStream) {
+        scannerStream.getTracks().forEach(track => track.stop());
+        scannerStream = null;
+    }
+    
+    if (scannerAnimationFrame) {
+        cancelAnimationFrame(scannerAnimationFrame);
+        scannerAnimationFrame = null;
+    }
+    
+    scannerModal.classList.remove('active');
+}
+
+function scanQrCode() {
+    if (!scannerStream) return;
+    
+    const canvas = scannerCanvas;
+    const video = scannerVideo;
+    
+    if (video.readyState === video.HAVE_ENOUGH_DATA) {
+        canvas.height = video.videoHeight;
+        canvas.width = video.videoWidth;
+        
+        const ctx = canvas.getContext('2d');
+        ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+        
+        const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+        const code = jsQR(imageData.data, imageData.width, imageData.height);
+        
+        if (code) {
+            try {
+                const data = JSON.parse(code.data);
+                if (data.quiz) {
+                    closeScanner();
+                    importedQuizzes.push(data.quiz);
+                    renderImportedQuizzes();
+                    showNotification('Quiz importé depuis QR code !');
+                    return;
+                }
+            } catch (error) {
+                console.error('Erreur de parsing QR:', error);
+            }
+        }
+    }
+    
+    scannerAnimationFrame = requestAnimationFrame(scanQrCode);
+}
+
+// Event listeners pour les modals
+qrModalClose.addEventListener('click', closeQrModal);
+downloadQrBtn.addEventListener('click', downloadQrCode);
+scannerModalClose.addEventListener('click', closeScanner);
+scanQrBtn.addEventListener('click', openScanner);
+
+qrModal.addEventListener('click', (e) => {
+    if (e.target === qrModal) closeQrModal();
+});
+
+scannerModal.addEventListener('click', (e) => {
+    if (e.target === scannerModal) closeScanner();
+});
+
+// ==================== QUIZ LOADING ====================
 
 // Chargement du quiz preset au démarrage
 async function loadPresetQuiz() {
@@ -110,12 +260,24 @@ function renderImportedQuizzes() {
             <p class="card-description">${quiz.description || quiz.subtitle}</p>
             <div class="card-footer">
                 <span class="card-meta">${quiz.questions.length} questions · ${Math.ceil(quiz.duration / 60)} min</span>
+                <button class="card-qr-btn" data-index="${index}">QR Code</button>
             </div>
         `;
         
-        card.addEventListener('click', () => {
+        // Event listener pour lancer le quiz
+        card.addEventListener('click', (e) => {
+            // Ne pas lancer le quiz si on clique sur le bouton QR
+            if (e.target.classList.contains('card-qr-btn')) return;
+            
             quizData = quiz;
             startQuiz();
+        });
+        
+        // Event listener pour le bouton QR
+        const qrBtn = card.querySelector('.card-qr-btn');
+        qrBtn.addEventListener('click', (e) => {
+            e.stopPropagation();
+            showQrModal(quiz);
         });
         
         importedQuizzesGrid.appendChild(card);
@@ -225,20 +387,22 @@ function renderQuestions() {
                 <input type="text" class="question-image" data-index="${index}" value="${question.image}" placeholder="https://...">
             </label>
             
-            <div class="question-actions">
-                <button class="delete-question-btn" data-index="${index}">Supprimer la question</button>
-            </div>
+            ${createdQuiz.questions.length > 1 ? `
+                <button class="delete-question-btn" data-index="${index}">Supprimer cette question</button>
+            ` : ''}
         `;
+        
         container.appendChild(questionDiv);
     });
     
-    attachQuestionEditorListeners();
+    // Event listeners pour les inputs
+    attachQuestionEventListeners();
 }
 
-function attachQuestionEditorListeners() {
-    // Texte des questions
-    document.querySelectorAll('.question-text').forEach(textarea => {
-        textarea.addEventListener('input', (e) => {
+function attachQuestionEventListeners() {
+    // Questions
+    document.querySelectorAll('.question-text').forEach(input => {
+        input.addEventListener('input', (e) => {
             const index = parseInt(e.target.dataset.index);
             createdQuiz.questions[index].question = e.target.value;
         });
@@ -247,9 +411,9 @@ function attachQuestionEditorListeners() {
     // Réponses
     document.querySelectorAll('.answer-input').forEach(input => {
         input.addEventListener('input', (e) => {
-            const index = parseInt(e.target.dataset.index);
-            const answerIndex = parseInt(e.target.dataset.answer);
-            createdQuiz.questions[index].answers[answerIndex] = e.target.value;
+            const qIndex = parseInt(e.target.dataset.index);
+            const aIndex = parseInt(e.target.dataset.answer);
+            createdQuiz.questions[qIndex].answers[aIndex] = e.target.value;
         });
     });
     
@@ -269,171 +433,144 @@ function attachQuestionEditorListeners() {
         });
     });
     
-    // Suppression
+    // Supprimer question
     document.querySelectorAll('.delete-question-btn').forEach(btn => {
         btn.addEventListener('click', (e) => {
             const index = parseInt(e.target.dataset.index);
-            if (createdQuiz.questions.length > 1) {
-                createdQuiz.questions.splice(index, 1);
-                // Réindexer les IDs
-                createdQuiz.questions.forEach((q, i) => q.id = i + 1);
-                renderQuestions();
-            } else {
-                showNotification('Un quiz doit contenir au moins une question', true);
-            }
+            createdQuiz.questions.splice(index, 1);
+            // Réindexer les IDs
+            createdQuiz.questions.forEach((q, i) => q.id = i + 1);
+            renderQuestions();
         });
     });
 }
 
-// Ajouter une question
-addQuestionBtn.addEventListener('click', addNewQuestion);
-
-// Sauvegarder le quiz
-saveQuizBtn.addEventListener('click', () => {
-    // Mettre à jour la config
+function updateCreatedQuiz() {
     createdQuiz.title = document.getElementById('quizTitle').value;
     createdQuiz.subtitle = document.getElementById('quizSubtitle').value;
     createdQuiz.description = document.getElementById('quizDescription').value;
     createdQuiz.duration = parseInt(document.getElementById('quizDuration').value);
+}
+
+function saveQuiz() {
+    updateCreatedQuiz();
     
-    // Vérifier qu'il n'y a pas de questions vides
-    const emptyQuestions = createdQuiz.questions.filter(q => 
-        !q.question || q.answers.some(a => !a)
-    );
-    
-    if (emptyQuestions.length > 0) {
-        showNotification('Certaines questions sont incomplètes', true);
-        return;
-    }
-    
-    // Créer le fichier JSON
-    const dataStr = JSON.stringify({ quiz: createdQuiz }, null, 2);
-    const dataBlob = new Blob([dataStr], { type: 'application/json' });
-    const url = URL.createObjectURL(dataBlob);
-    const link = document.createElement('a');
-    link.href = url;
-    link.download = `${createdQuiz.title.replace(/\s+/g, '_')}.json`;
-    link.click();
-    URL.revokeObjectURL(url);
+    const quizJson = JSON.stringify({ quiz: createdQuiz }, null, 2);
+    const blob = new Blob([quizJson], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `${createdQuiz.title.replace(/\s+/g, '_')}.json`;
+    a.click();
     
     showNotification('Quiz téléchargé avec succès !');
-});
+    
+    // Afficher la modal QR après téléchargement
+    setTimeout(() => {
+        showQrModal(createdQuiz);
+    }, 500);
+}
 
-// Prévisualiser le quiz
-previewQuizBtn.addEventListener('click', () => {
-    // Mettre à jour la config
-    createdQuiz.title = document.getElementById('quizTitle').value;
-    createdQuiz.subtitle = document.getElementById('quizSubtitle').value;
-    createdQuiz.description = document.getElementById('quizDescription').value;
-    createdQuiz.duration = parseInt(document.getElementById('quizDuration').value);
-    
-    // Vérifier les questions
-    const emptyQuestions = createdQuiz.questions.filter(q => 
-        !q.question || q.answers.some(a => !a)
-    );
-    
-    if (emptyQuestions.length > 0) {
-        showNotification('Certaines questions sont incomplètes', true);
-        return;
-    }
-    
-    // Charger et démarrer
+function previewQuiz() {
+    updateCreatedQuiz();
     quizData = createdQuiz;
-    createQuizPage.style.display = 'none';
     startQuiz();
-});
+}
 
-// Retour depuis création
-backFromCreateBtn.addEventListener('click', () => {
+function backToHome() {
     createQuizPage.style.display = 'none';
     homepage.style.display = 'block';
-});
+}
 
-// ==================== QUIZ ====================
+// Event listeners
+addQuestionBtn.addEventListener('click', addNewQuestion);
+saveQuizBtn.addEventListener('click', saveQuiz);
+previewQuizBtn.addEventListener('click', previewQuiz);
+backFromCreateBtn.addEventListener('click', backToHome);
+
+// ==================== QUIZ LOGIC ====================
 
 function startQuiz() {
-    if (!quizData) {
-        showNotification('Le questionnaire n\'est pas chargé', true);
-        return;
-    }
+    homepage.style.display = 'none';
+    createQuizPage.style.display = 'none';
+    quizpage.style.display = 'block';
     
-    // Réinitialiser
     currentQuestionIndex = 0;
     userAnswers = [];
     elapsedTime = 0;
-    
-    // Afficher la page quiz
-    homepage.style.display = 'none';
-    createQuizPage.style.display = 'none';
-    resultspage.style.display = 'none';
-    quizpage.style.display = 'block';
-    
-    // Démarrer le chrono
     startTime = Date.now();
-    startTimer();
     
-    // Afficher la première question
     displayQuestion();
+    startTimer();
 }
 
 function displayQuestion() {
     const question = quizData.questions[currentQuestionIndex];
     
-    // Texte de la question
     questionText.textContent = question.question;
-    
-    // Progression
     progressDisplay.textContent = `Question ${currentQuestionIndex + 1} / ${quizData.questions.length}`;
-    const progressPercent = ((currentQuestionIndex + 1) / quizData.questions.length) * 100;
-    questionProgressFill.style.width = progressPercent + '%';
     
-    // Réponses avec images en arrière-plan
-    answerCards.forEach((card, index) => {
-        const answerTextElement = card.querySelector('.answer-text');
-        if (question.answers[index]) {
-            answerTextElement.textContent = question.answers[index];
-            card.style.display = 'flex';
-            card.classList.remove('selected');
-            
-            // Appliquer l'image de fond si elle existe
-            if (question.answerImages && question.answerImages[index]) {
-                card.style.setProperty('--bg-image', `url('${question.answerImages[index]}')`);
-            } else {
-                card.style.setProperty('--bg-image', 'none');
-            }
-        } else {
-            card.style.display = 'none';
-        }
-    });
-    
-    // Image
-    if (question.image && question.image !== '') {
+    // Image de la question
+    if (question.image) {
         questionImage.src = question.image;
         questionImage.style.display = 'block';
     } else {
+        questionImage.src = '';
         questionImage.style.display = 'none';
     }
     
-    // Vérifier si déjà répondu
-    if (userAnswers[currentQuestionIndex] !== undefined) {
-        highlightAnswer(userAnswers[currentQuestionIndex]);
+    // Réponses
+    answerCards.forEach((card, index) => {
+        const answerText = card.querySelector('.answer-text');
+        answerText.textContent = question.answers[index];
+        card.classList.remove('selected');
+        
+        // Image de fond pour la réponse
+        if (question.answerImages && question.answerImages[index]) {
+            card.style.setProperty('--bg-image', `url(${question.answerImages[index]})`);
+        } else {
+            card.style.setProperty('--bg-image', 'none');
+        }
+    });
+    
+    // Mise à jour de la barre de progression
+    const progress = ((currentQuestionIndex + 1) / quizData.questions.length) * 100;
+    questionProgressFill.style.width = `${progress}%`;
+}
+
+function selectAnswer(answerIndex) {
+    answerCards.forEach(card => card.classList.remove('selected'));
+    answerCards[answerIndex].classList.add('selected');
+    userAnswers[currentQuestionIndex] = answerIndex;
+}
+
+function nextQuestion() {
+    if (userAnswers[currentQuestionIndex] === undefined) {
+        showNotification('Veuillez sélectionner une réponse', true);
+        return;
+    }
+    
+    currentQuestionIndex++;
+    
+    if (currentQuestionIndex < quizData.questions.length) {
+        displayQuestion();
+    } else {
+        endQuiz();
     }
 }
 
 function startTimer() {
     timerInterval = setInterval(() => {
         elapsedTime = Math.floor((Date.now() - startTime) / 1000);
-        const remainingTime = quizData.duration - elapsedTime;
+        const timeProgress = (elapsedTime / quizData.duration) * 100;
         
         timeDisplay.textContent = `${elapsedTime}s / ${quizData.duration}s`;
+        timeProgressFill.style.width = `${Math.min(timeProgress, 100)}%`;
         
-        const timePercent = (elapsedTime / quizData.duration) * 100;
-        timeProgressFill.style.width = Math.min(timePercent, 100) + '%';
-        
-        if (remainingTime <= 0) {
+        if (elapsedTime >= quizData.duration) {
             endQuiz();
         }
-    }, 1000);
+    }, 100);
 }
 
 function stopTimer() {
@@ -443,51 +580,14 @@ function stopTimer() {
     }
 }
 
-function selectAnswer(answerIndex) {
-    userAnswers[currentQuestionIndex] = answerIndex;
-    highlightAnswer(answerIndex);
-}
-
-function highlightAnswer(answerIndex) {
-    answerCards.forEach((card, index) => {
-        if (index === answerIndex) {
-            card.classList.add('selected');
-        } else {
-            card.classList.remove('selected');
-        }
-    });
-}
-
-function nextQuestion() {
-    if (userAnswers[currentQuestionIndex] === undefined) {
-        showNotification('Veuillez sélectionner une réponse', true);
-        return;
-    }
-    
-    if (currentQuestionIndex < quizData.questions.length - 1) {
-        currentQuestionIndex++;
-        displayQuestion();
-    } else {
-        endQuiz();
-    }
-}
-
-// Générer un ID de certificat unique avec pattern mathématique
 function generateCertificateId() {
     const timestamp = Date.now();
-    const quizHash = hashString(quizData.title);
-    const scoreHash = userAnswers.reduce((acc, val) => acc + val, 0);
-    
-    // Pattern: QZ-XXXXXX-YYYY-ZZZZ
-    const part1 = (timestamp % 999999).toString().padStart(6, '0');
-    const part2 = (quizHash % 9999).toString().padStart(4, '0');
-    const part3 = ((scoreHash * 137 + timestamp) % 9999).toString().padStart(4, '0');
-    
-    return `QZ-${part1}-${part2}-${part3}`;
+    const randomPart = Math.random().toString(36).substring(2, 8).toUpperCase();
+    const hash = hashCode(JSON.stringify(userAnswers) + timestamp);
+    return `${randomPart}-${hash.toString(36).substring(0, 6).toUpperCase()}`;
 }
 
-// Fonction de hachage simple
-function hashString(str) {
+function hashCode(str) {
     let hash = 0;
     for (let i = 0; i < str.length; i++) {
         const char = str.charCodeAt(i);
@@ -675,6 +775,8 @@ downloadCertificateBtn.addEventListener('click', async () => {
     }
 });
 
+// ==================== ANIMATIONS ====================
+
 // Animations CSS inline
 const style = document.createElement('style');
 style.textContent = `
@@ -702,19 +804,18 @@ style.textContent = `
 `;
 document.head.appendChild(style);
 
+// ==================== CURSOR HALO ====================
+
 const halo = document.getElementById('halo');
 
-        // On écoute le mouvement de la souris sur tout le document
-        document.addEventListener('mousemove', (e) => {
-            // Utilisation des coordonnées clientX et clientY
-            const x = e.clientX;
-            const y = e.clientY;
+// On écoute le mouvement de la souris sur tout le document
+document.addEventListener('mousemove', (e) => {
+    const x = e.clientX;
+    const y = e.clientY;
+    halo.style.transform = `translate3d(calc(${x}px - 50%), calc(${y}px - 50%), 0)`;
+});
 
-            // On met à jour la position avec translate3d pour de meilleures performances (GPU)
-            // Le -50% est déjà géré par le CSS via transform: translate(-50%, -50%)
-            // On concatène les deux ici :
-            halo.style.transform = `translate3d(calc(${x}px - 50%), calc(${y}px - 50%), 0)`;
-        });
+// ==================== INITIALIZATION ====================
 
 // Charger le quiz preset au démarrage
 loadPresetQuiz();
