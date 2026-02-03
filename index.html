@@ -3,229 +3,244 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Ctrl+Alt+Histoire - Quiz</title>
-    <link rel="stylesheet" href="style.css">
+    <title>Test Caméra - Diagnostic</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+            background: #000;
+            color: #fff;
+            padding: 20px;
+        }
+        
+        .container {
+            max-width: 600px;
+            margin: 0 auto;
+        }
+        
+        h1 {
+            margin-bottom: 20px;
+            font-size: 1.5rem;
+        }
+        
+        button {
+            background: #fff;
+            color: #000;
+            border: none;
+            padding: 15px 30px;
+            border-radius: 8px;
+            font-size: 1rem;
+            font-weight: 600;
+            cursor: pointer;
+            margin: 10px 5px;
+            width: 100%;
+        }
+        
+        button:active {
+            transform: scale(0.98);
+        }
+        
+        button:disabled {
+            opacity: 0.5;
+        }
+        
+        video {
+            width: 100%;
+            background: #222;
+            border-radius: 8px;
+            margin: 20px 0;
+            max-height: 400px;
+        }
+        
+        .info {
+            background: rgba(255, 255, 255, 0.1);
+            padding: 15px;
+            border-radius: 8px;
+            margin: 10px 0;
+            font-size: 0.9rem;
+            line-height: 1.6;
+        }
+        
+        .success {
+            color: #4ade80;
+        }
+        
+        .error {
+            color: #ff6b6b;
+        }
+        
+        .log {
+            background: #111;
+            padding: 15px;
+            border-radius: 8px;
+            margin: 10px 0;
+            font-family: monospace;
+            font-size: 0.85rem;
+            max-height: 300px;
+            overflow-y: auto;
+        }
+    </style>
 </head>
 <body>
-    <!-- Vidéos en arrière-plan -->
-    <div class="video-background">
-        <video class="video1" autoplay muted loop>
-            <source src="video1.mp4" type="video/mp4">
-        </video>
-        <video class="video2" autoplay muted loop>
-            <source src="video2.mp4" type="video/mp4">
-        </video>
-    </div>
-    <div class="cursor-halo" id="halo"></div>
-
-    <!-- Modal QR Code -->
-    <div class="qr-modal" id="qrModal">
-        <div class="qr-modal-content">
-            <button class="qr-modal-close" id="qrModalClose">&times;</button>
-            <h2 class="qr-modal-title">Code QR du Quiz</h2>
-            <p class="qr-modal-subtitle">Scannez ce code pour partager le quiz</p>
-            <div class="qr-code-container" id="qrCodeContainer"></div>
-            <button class="btn-primary" id="downloadQrBtn">Télécharger le QR Code</button>
-        </div>
-    </div>
-
-    <!-- Modal Scanner QR -->
-    <div class="qr-modal" id="scannerModal">
-        <div class="qr-modal-content">
-            <button class="qr-modal-close" id="scannerModalClose">&times;</button>
-            <h2 class="qr-modal-title">Scanner un QR Code</h2>
-            <p class="qr-modal-subtitle">Positionnez le QR code devant la caméra</p>
-            <div class="scanner-container">
-                <video id="scannerVideo" autoplay></video>
-                <canvas id="scannerCanvas" style="display: none;"></canvas>
-            </div>
-            <p class="scanner-status" id="scannerStatus">Initialisation de la caméra...</p>
-        </div>
-    </div>
-
-    <!-- Page d'accueil -->
-    <div class="homepage" id="homepage">
-        <div class="homepage-header">
-            <h1 class="main-title">Ctrl+Alt+Histoire</h1>
-            <p class="main-subtitle">Testez vos connaissances en informatique</p>
-        </div>
-
-        <!-- Cartes principales -->
-        <div class="main-cards-container">
-            <div class="main-card" id="presetQuizCard">
-                <h2 class="card-title">Quiz Histoire Informatique</h2>
-                <p class="card-description">Questionnaire sur l'évolution de l'informatique</p>
-                <div class="card-footer">
-                    <span class="card-meta">5 questions · 5 min</span>
-                </div>
-            </div>
-
-            <div class="main-card" id="createQuizCard">
-                <h2 class="card-title">Créer un Quiz</h2>
-                <p class="card-description">Créez votre propre questionnaire personnalisé</p>
-                <div class="card-footer">
-                    <span class="card-meta">Éditeur intuitif</span>
-                </div>
-            </div>
-        </div>
-
-        <!-- Section des quiz importés -->
-        <div class="imported-section">
-            <div class="section-header">
-                <h3 class="section-title">Mes Quiz Importés</h3>
-                <div class="header-buttons">
-                    <button class="import-btn scanner-btn" id="scanQrBtn">
-                        <span class="btn-icon"></span>
-                        Lire QR
-                    </button>
-                    <button class="import-btn" id="importQuizBtn">
-                        <span class="btn-icon">↑</span>
-                        Importer un quiz
-                    </button>
-                </div>
-            </div>
-            
-            <div class="imported-quizzes-grid" id="importedQuizzesGrid">
-                <!-- Message vide au début -->
-                <div class="empty-state" id="emptyState">
-                    <p>Aucun quiz importé</p>
-                    <p class="empty-hint">Cliquez sur "Importer un quiz" ou "Lire QR" pour ajouter vos propres questionnaires</p>
-                </div>
-            </div>
-        </div>
-    </div>
-
-    <!-- Input file caché -->
-    <input type="file" id="jsonFileInput" accept=".json" style="display: none;">
-
-    <!-- Page de création de quiz -->
-    <div class="create-quiz-page" id="createQuizPage" style="display: none;">
-        <div class="page-header">
-            <button id="backFromCreateBtn" class="back-btn">← Retour</button>
-            <h1 class="page-title">Créer un Quiz</h1>
-            <div></div>
-        </div>
+    <div class="container">
+        <h1>🎥 Test Caméra Android</h1>
         
-        <div class="create-content">
-            <div class="config-section">
-                <h2 class="section-heading">Configuration</h2>
-                <div class="form-grid">
-                    <div class="form-group">
-                        <label class="form-label">Titre du quiz</label>
-                        <input type="text" id="quizTitle" class="form-input" value="Mon Quiz">
-                    </div>
-                    <div class="form-group">
-                        <label class="form-label">Sous-titre</label>
-                        <input type="text" id="quizSubtitle" class="form-input" value="Description du quiz">
-                    </div>
-                    <div class="form-group">
-                        <label class="form-label">Description</label>
-                        <input type="text" id="quizDescription" class="form-input" value="Testez vos connaissances">
-                    </div>
-                    <div class="form-group">
-                        <label class="form-label">Durée (secondes)</label>
-                        <input type="number" id="quizDuration" class="form-input" value="300">
-                    </div>
-                </div>
-            </div>
-            
-            <div class="questions-section">
-                <div class="section-header-inline">
-                    <h2 class="section-heading">Questions</h2>
-                    <button id="addQuestionBtn" class="btn-secondary">+ Ajouter</button>
-                </div>
-                <div id="questionsContainer"></div>
-            </div>
-            
-            <div class="actions-bar">
-                <button id="saveQuizBtn" class="btn-primary">Télécharger le quiz</button>
-                <button id="previewQuizBtn" class="btn-secondary">Prévisualiser</button>
-            </div>
-        </div>
+        <button id="testBtn1">Test 1: Caméra arrière (environment)</button>
+        <button id="testBtn2">Test 2: Caméra simple</button>
+        <button id="testBtn3">Test 3: N'importe quelle caméra</button>
+        <button id="listBtn">Lister les caméras</button>
+        <button id="stopBtn" style="background: #ff6b6b; color: #fff;">Arrêter</button>
+        
+        <video id="video" autoplay playsinline muted></video>
+        
+        <div id="info" class="info"></div>
+        <div id="log" class="log"></div>
     </div>
 
-    <!-- Page du quiz -->
-    <div class="quiz-page" id="quizpage">
-        <div class="quiz-header">
-            <div class="quiz-progress-info">
-                <span id="progressDisplay" class="progress-text">Question 1 / 5</span>
-                <span id="timeDisplay" class="time-text">0s / 300s</span>
-            </div>
-            <div class="progress-bars">
-                <div class="progress-bar">
-                    <div class="progress-fill" id="questionProgressFill"></div>
-                </div>
-                <div class="progress-bar time-bar">
-                    <div class="progress-fill" id="timeProgressFill"></div>
-                </div>
-            </div>
-        </div>
-
-        <div class="quiz-content">
-            <div class="quiz-main">
-                <h2 id="questionText" class="question-text">Question</h2>
+    <script>
+        const video = document.getElementById('video');
+        const info = document.getElementById('info');
+        const log = document.getElementById('log');
+        let currentStream = null;
+        
+        function addLog(message, isError = false) {
+            const time = new Date().toLocaleTimeString();
+            const color = isError ? '#ff6b6b' : '#4ade80';
+            log.innerHTML = `<div style="color: ${color}">[${time}] ${message}</div>` + log.innerHTML;
+            console.log(message);
+        }
+        
+        function stopStream() {
+            if (currentStream) {
+                currentStream.getTracks().forEach(track => {
+                    track.stop();
+                    addLog(`Piste arrêtée: ${track.label}`);
+                });
+                currentStream = null;
+                video.srcObject = null;
+            }
+        }
+        
+        async function testCamera(constraints, testName) {
+            stopStream();
+            info.innerHTML = `<div>Test en cours: ${testName}...</div>`;
+            addLog(`Début ${testName}`);
+            
+            try {
+                addLog(`Contraintes: ${JSON.stringify(constraints)}`);
                 
-                <div class="answers-grid">
-                    <div class="answer-card" data-answer="0">
-                        <div class="answer-content">
-                            <span class="answer-label">A</span>
-                            <span class="answer-text"></span>
-                        </div>
+                const stream = await navigator.mediaDevices.getUserMedia(constraints);
+                currentStream = stream;
+                video.srcObject = stream;
+                
+                const tracks = stream.getVideoTracks();
+                const settings = tracks[0].getSettings();
+                
+                info.innerHTML = `
+                    <div class="success">✓ ${testName} réussi!</div>
+                    <div style="margin-top: 10px;">
+                        Caméra: ${tracks[0].label}<br>
+                        Résolution: ${settings.width}x${settings.height}<br>
+                        FacingMode: ${settings.facingMode || 'N/A'}
                     </div>
-                    <div class="answer-card" data-answer="1">
-                        <div class="answer-content">
-                            <span class="answer-label">B</span>
-                            <span class="answer-text"></span>
-                        </div>
+                `;
+                
+                addLog(`✓ ${testName} OK - ${tracks[0].label}`);
+                
+                await video.play();
+                addLog('Vidéo en lecture');
+                
+            } catch (error) {
+                info.innerHTML = `
+                    <div class="error">✗ ${testName} échoué</div>
+                    <div style="margin-top: 10px;">
+                        Erreur: ${error.name}<br>
+                        Message: ${error.message}
                     </div>
-                    <div class="answer-card" data-answer="2">
-                        <div class="answer-content">
-                            <span class="answer-label">C</span>
-                            <span class="answer-text"></span>
-                        </div>
+                `;
+                addLog(`✗ ${testName} - ${error.name}: ${error.message}`, true);
+            }
+        }
+        
+        document.getElementById('testBtn1').addEventListener('click', () => {
+            testCamera({
+                video: {
+                    facingMode: 'environment',
+                    width: { ideal: 1280 },
+                    height: { ideal: 720 }
+                }
+            }, 'Caméra arrière HD');
+        });
+        
+        document.getElementById('testBtn2').addEventListener('click', () => {
+            testCamera({
+                video: { facingMode: 'environment' }
+            }, 'Caméra arrière simple');
+        });
+        
+        document.getElementById('testBtn3').addEventListener('click', () => {
+            testCamera({
+                video: true
+            }, 'N\'importe quelle caméra');
+        });
+        
+        document.getElementById('listBtn').addEventListener('click', async () => {
+            try {
+                addLog('Énumération des appareils...');
+                const devices = await navigator.mediaDevices.enumerateDevices();
+                const videoDevices = devices.filter(d => d.kind === 'videoinput');
+                
+                info.innerHTML = `
+                    <div class="success">Caméras détectées: ${videoDevices.length}</div>
+                    <div style="margin-top: 10px;">
+                        ${videoDevices.map((d, i) => 
+                            `${i + 1}. ${d.label || 'Caméra ' + (i + 1)}<br>ID: ${d.deviceId.substring(0, 20)}...`
+                        ).join('<br><br>')}
                     </div>
-                    <div class="answer-card" data-answer="3">
-                        <div class="answer-content">
-                            <span class="answer-label">D</span>
-                            <span class="answer-text"></span>
-                        </div>
-                    </div>
-                </div>
-
-                <button id="nextBtn" class="btn-primary quiz-next-btn">Question suivante →</button>
-            </div>
-
-            <div class="quiz-sidebar">
-                <div class="question-image-container">
-                    <img id="questionImage" src="" alt="Question image">
-                </div>
-            </div>
-        </div>
-    </div>
-
-    <!-- Page de résultats -->
-    <div class="results-page" id="resultspage" style="display: none;">
-        <div class="results-container">
-            <div class="results-header">
-                <h1 class="results-title">Résultats</h1>
-                <div class="score-card">
-                    <h2 id="scoreDisplay" class="score-text"></h2>
-                    <p id="certificateId" style="color: #888888; font-size: 0.9rem; margin-top: 10px;"></p>
-                </div>
-            </div>
-            
-            <div class="results-actions">
-                <button id="downloadCertificateBtn" class="download-certificate-btn">Télécharger le certificat</button>
-                <button id="restartBtn" class="btn-primary">Retour au menu</button>
-            </div>
-            
-            <div class="results-details" id="detailedResults"></div>
-        </div>
-    </div>
-
-    <!-- Scripts -->
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/jsqr@1.4.0/dist/jsQR.min.js"></script>
-    <script src="quiz.js"></script>
+                `;
+                
+                videoDevices.forEach((d, i) => {
+                    addLog(`Caméra ${i + 1}: ${d.label || 'Sans nom'}`);
+                });
+                
+            } catch (error) {
+                info.innerHTML = `<div class="error">Erreur: ${error.message}</div>`;
+                addLog(`Erreur énumération: ${error.message}`, true);
+            }
+        });
+        
+        document.getElementById('stopBtn').addEventListener('click', () => {
+            stopStream();
+            info.innerHTML = '<div>Caméra arrêtée</div>';
+            addLog('Arrêt manuel');
+        });
+        
+        // Info initiale
+        addLog('Page chargée - Prêt pour les tests');
+        
+        if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+            info.innerHTML = '<div class="error">⚠️ API getUserMedia non disponible!</div>';
+            addLog('ERREUR: getUserMedia non supporté', true);
+        } else {
+            info.innerHTML = '<div class="success">✓ API getUserMedia disponible</div>';
+            addLog('API getUserMedia disponible');
+        }
+        
+        // Détecter le navigateur
+        const ua = navigator.userAgent;
+        let browser = 'Inconnu';
+        if (ua.includes('Chrome')) browser = 'Chrome';
+        else if (ua.includes('Firefox')) browser = 'Firefox';
+        else if (ua.includes('Safari')) browser = 'Safari';
+        
+        addLog(`Navigateur: ${browser}`);
+        addLog(`User Agent: ${ua}`);
+        addLog(`HTTPS: ${location.protocol === 'https:'}`);
+    </script>
 </body>
 </html>
