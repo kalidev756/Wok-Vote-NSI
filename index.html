@@ -18,28 +18,47 @@
     </div>
     <div class="cursor-halo" id="halo"></div>
 
-    <!-- Modal QR Code -->
-    <div class="qr-modal" id="qrModal">
+    <!-- Modal Code de Partage -->
+    <div class="qr-modal" id="shareModal">
         <div class="qr-modal-content">
-            <button class="qr-modal-close" id="qrModalClose">&times;</button>
-            <h2 class="qr-modal-title">Code QR du Quiz</h2>
-            <p class="qr-modal-subtitle">Scannez ce code pour partager le quiz</p>
-            <div class="qr-code-container" id="qrCodeContainer"></div>
-            <button class="btn-primary" id="downloadQrBtn">Télécharger le QR Code</button>
+            <button class="qr-modal-close" id="shareModalClose">&times;</button>
+            <h2 class="qr-modal-title">Partager le Quiz</h2>
+            <p class="qr-modal-subtitle">Partagez ce code avec vos participants</p>
+            
+            <div class="share-code-display">
+                <div class="code-box" id="shareCodeDisplay">XXX-XXX</div>
+                <p class="code-hint">Code valable 7 jours</p>
+            </div>
+            
+            <div class="share-buttons">
+                <button class="btn-primary" id="copyCodeBtn">Copier le code</button>
+                <button class="btn-secondary" id="shareWhatsappBtn">WhatsApp</button>
+            </div>
+            
+            <div class="share-status" id="shareStatus"></div>
         </div>
     </div>
 
-    <!-- Modal Scanner QR -->
-    <div class="qr-modal" id="scannerModal">
+    <!-- Modal Rejoindre Quiz -->
+    <div class="qr-modal" id="joinModal">
         <div class="qr-modal-content">
-            <button class="qr-modal-close" id="scannerModalClose">&times;</button>
-            <h2 class="qr-modal-title">Scanner un QR Code</h2>
-            <p class="qr-modal-subtitle">Positionnez le QR code devant la caméra</p>
-            <div class="scanner-container">
-                <video id="scannerVideo" autoplay></video>
-                <canvas id="scannerCanvas" style="display: none;"></canvas>
+            <button class="qr-modal-close" id="joinModalClose">&times;</button>
+            <h2 class="qr-modal-title">Rejoindre un Quiz</h2>
+            <p class="qr-modal-subtitle">Entrez le code partagé</p>
+            
+            <div class="join-input-container">
+                <input 
+                    type="text" 
+                    id="joinCodeInput" 
+                    class="code-input" 
+                    placeholder="XXX-XXX"
+                    maxlength="7"
+                    autocomplete="off"
+                >
+                <button class="btn-primary" id="joinQuizBtn">Rejoindre</button>
             </div>
-            <p class="scanner-status" id="scannerStatus">Initialisation de la caméra...</p>
+            
+            <div class="join-status" id="joinStatus"></div>
         </div>
     </div>
 
@@ -74,12 +93,12 @@
             <div class="section-header">
                 <h3 class="section-title">Mes Quiz Importés</h3>
                 <div class="header-buttons">
-                    <button class="import-btn scanner-btn" id="scanQrBtn">
+                    <button class="import-btn scanner-btn" id="joinQuizOpenBtn">
                         <span class="btn-icon"></span>
-                        Lire QR
+                        Rejoindre
                     </button>
                     <button class="import-btn" id="importQuizBtn">
-                        <span class="btn-icon">↑</span>
+                        <span class="btn-icon"></span>
                         Importer un quiz
                     </button>
                 </div>
@@ -89,7 +108,7 @@
                 <!-- Message vide au début -->
                 <div class="empty-state" id="emptyState">
                     <p>Aucun quiz importé</p>
-                    <p class="empty-hint">Cliquez sur "Importer un quiz" ou "Lire QR" pour ajouter vos propres questionnaires</p>
+                    <p class="empty-hint">Cliquez sur "Importer un quiz" ou "Rejoindre" pour ajouter vos propres questionnaires</p>
                 </div>
             </div>
         </div>
@@ -224,8 +243,7 @@
     </div>
 
     <!-- Scripts -->
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/jsqr@1.4.0/dist/jsQR.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <script src="quiz.js"></script>
 </body>
 </html>
