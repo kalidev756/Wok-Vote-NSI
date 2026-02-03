@@ -103,19 +103,47 @@ async function openScanner() {
     scannerStatus.className = 'scanner-status';
     
     try {
-        scannerStream = await navigator.mediaDevices.getUserMedia({
-            video: { facingMode: 'environment' }
-        });
+        // Vérifier si l'API est disponible
+        if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+            throw new Error('API caméra non disponible');
+        }
+        
+        // Configuration pour mobile Android
+        const constraints = {
+            video: {
+                facingMode: { ideal: 'environment' },
+                width: { ideal: 1280 },
+                height: { ideal: 720 }
+            }
+        };
+        
+        scannerStream = await navigator.mediaDevices.getUserMedia(constraints);
         
         scannerVideo.srcObject = scannerStream;
-        scannerStatus.textContent = 'Scannez un QR code...';
-        scannerStatus.className = 'scanner-status scanning';
         
-        // Démarrer la détection
-        requestAnimationFrame(scanQrCode);
+        // Attendre que la vidéo soit prête
+        scannerVideo.onloadedmetadata = () => {
+            scannerVideo.play();
+            scannerStatus.textContent = 'Scannez un QR code...';
+            scannerStatus.className = 'scanner-status scanning';
+            
+            // Démarrer la détection
+            requestAnimationFrame(scanQrCode);
+        };
+        
     } catch (error) {
         console.error('Erreur caméra:', error);
-        scannerStatus.textContent = 'Impossible d\'accéder à la caméra';
+        let errorMessage = 'Impossible d\'accéder à la caméra';
+        
+        if (error.name === 'NotAllowedError') {
+            errorMessage = 'Accès à la caméra refusé. Veuillez autoriser l\'accès.';
+        } else if (error.name === 'NotFoundError') {
+            errorMessage = 'Aucune caméra trouvée sur cet appareil.';
+        } else if (error.name === 'NotReadableError') {
+            errorMessage = 'La caméra est déjà utilisée par une autre application.';
+        }
+        
+        scannerStatus.textContent = errorMessage;
         scannerStatus.className = 'scanner-status error';
     }
 }
@@ -189,11 +217,17 @@ scannerModal.addEventListener('click', (e) => {
 async function loadPresetQuiz() {
     try {
         const response = await fetch('questions.json');
-        const data = await response.json();
+        if (!response.ok) {
+            throw new Error(`HTTP error! status: ${response.status}`);
+        }
+        const text = await response.text();
+        console.log('Raw JSON:', text.substring(0, 200)); // Debug
+        const data = JSON.parse(text);
         quizData = data.quiz;
         console.log('Quiz preset chargé:', quizData);
     } catch (error) {
         console.error('Erreur de chargement du quiz:', error);
+        showNotification('Erreur de chargement du quiz preset', true);
     }
 }
 
