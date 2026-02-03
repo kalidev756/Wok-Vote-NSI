@@ -1,40 +1,116 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="fr">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Reboot_history</title>
-    <link rel="stylesheet" href="styles.css">
-    <script src="script.js"></script>
+    <title>Ctrl+Alt+Histoire - Quiz</title>
+    <link rel="stylesheet" href="style.css">
 </head>
 <body>
-    <div class="maincontent">
-        <h1>Ctrl+alt+histoire</h1>
-        <h3>Quand le code reboot son histoire</h3>
-        <h4>Lorem ipsum dolor sit amet consectetur adipisicing elit. Similique perspiciatis perferendis debitis voluptates fuga molestias. Amet, assumenda porro! Facilis iusto earum doloribus quidem, iste enim facere debitis inventore neque accusamus.</h4>
-        <video src="https://www.pexels.com/fr-fr/download/video/29475053/" class="video1"></video>
-        <video src="https://www.pexels.com/fr-fr/download/video/33184851/" class="video2"></video>
-    </div>
-    <div class="quiz">
-        <div class="left">
-            <h3>Question1</h3>
-            <div class="supp">
-                <div class="question_place1"></div>
-                <div class="question_place2"></div>
-            </div>
-            <div class="down">
-                <div class="question_place3"></div>
-                <div class="question_place4"></div>
+    <!-- Page d'accueil avec carousel -->
+    <div class="maincontent" id="homepage">
+        <video class="video1" autoplay muted loop>
+            <source src="video1.mp4" type="video/mp4">
+        </video>
+        <video class="video2" autoplay muted loop>
+            <source src="video2.mp4" type="video/mp4">
+        </video>
+        
+        <h1 id="mainTitle">Ctrl+Alt+Histoire</h1>
+        <h3 id="mainSubtitle">Choisissez votre quiz</h3>
+        
+        <!-- Carousel de cartes -->
+        <div class="carousel-container">
+            <div class="carousel-track" id="carouselTrack">
+                <!-- Les cartes seront générées dynamiquement -->
             </div>
         </div>
+    </div>
+
+    <!-- Page de création de quiz -->
+    <div class="create-quiz-page" id="createQuizPage" style="display: none;">
+        <h1>Créer votre Quiz</h1>
+        
+        <div class="quiz-config">
+            <h2>Configuration du Quiz</h2>
+            <label>Titre du quiz:
+                <input type="text" id="quizTitle" value="Mon Quiz">
+            </label>
+            <label>Sous-titre:
+                <input type="text" id="quizSubtitle" value="Description du quiz">
+            </label>
+            <label>Description (pour la carte):
+                <input type="text" id="quizDescription" value="Testez vos connaissances">
+            </label>
+            <label>Durée (secondes):
+                <input type="number" id="quizDuration" value="300">
+            </label>
+            <label>Image de la carte (URL):
+                <input type="text" id="quizCardImage" placeholder="https://...">
+            </label>
+        </div>
+        
+        <div class="questions-list" id="questionsList">
+            <h2>Questions</h2>
+            <div id="questionsContainer"></div>
+            <button id="addQuestionBtn" class="action-btn">+ Ajouter une question</button>
+        </div>
+        
+        <div class="actions">
+            <button id="saveQuizBtn" class="action-btn">Télécharger le quiz (JSON)</button>
+            <button id="previewQuizBtn" class="action-btn">Prévisualiser</button>
+            <button id="backFromCreateBtn" class="action-btn">Retour au menu</button>
+        </div>
+    </div>
+
+    <!-- Input file caché -->
+    <input type="file" id="jsonFileInput" accept=".json" style="display: none;">
+
+    <!-- Page du quiz -->
+    <div class="quiz" id="quizpage">
+        <div class="left">
+            <div class="quizz_header">
+                <div class="question_titlebox">
+                    <h3 id="questionText">Question</h3>
+                    <button id="nextBtn">Next Question</button>
+                </div>
+                
+                <div class="supp">
+                    <div class="time_progress">
+                        <h6 id="timeDisplay">Temps: 0s / 0s</h6>
+                    </div>
+                    <div class="advencement_progress">
+                        <h6 id="progressDisplay">Question: 0 / 0</h6>
+                    </div>
+                </div>
+            </div>
+
+            <div class="down">
+                <div class="answer">
+                    <div class="question_place1" data-answer="0"></div>
+                    <div class="question_place2" data-answer="1"></div>
+                    <div class="question_place3" data-answer="2"></div>
+                    <div class="question_place4" data-answer="3"></div>
+                </div>
+            </div>
+        </div>
+
         <div class="right">
             <div class="picture_place">
-                <img src="https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcRsFTc7PF33klcZXQxjG8TwSukRMS2YGIU1fw&s" alt="">
-            </div>
-            <div class="button_place">
-                <button>Next Question</button>
+                <img id="questionImage" src="" alt="Question image" style="display: none;">
             </div>
         </div>
     </div>
+
+    <!-- Page de résultats -->
+    <div class="results" id="resultspage" style="display: none;">
+        <h1>Résultats</h1>
+        <h2 id="scoreDisplay"></h2>
+        <div id="detailedResults"></div>
+        <button id="restartBtn">Recommencer</button>
+    </div>
+
+    <script src="quiz.js"></script>
 </body>
+</html>
 </html>
