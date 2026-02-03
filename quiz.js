@@ -6,117 +6,63 @@ let startTime = 0;
 let timerInterval = null;
 let elapsedTime = 0;
 let createdQuiz = null;
+let importedQuizzes = []; // Stockage des quiz importés
+let certificateId = ''; // ID du certificat
 
 // Éléments DOM
 const homepage = document.getElementById('homepage');
 const quizpage = document.getElementById('quizpage');
 const resultspage = document.getElementById('resultspage');
 const createQuizPage = document.getElementById('createQuizPage');
-const carouselTrack = document.getElementById('carouselTrack');
 const jsonFileInput = document.getElementById('jsonFileInput');
+const importedQuizzesGrid = document.getElementById('importedQuizzesGrid');
+const emptyState = document.getElementById('emptyState');
 
-// Boutons du quiz
+// Boutons
+const presetQuizCard = document.getElementById('presetQuizCard');
+const createQuizCard = document.getElementById('createQuizCard');
+const importQuizBtn = document.getElementById('importQuizBtn');
 const nextBtn = document.getElementById('nextBtn');
 const restartBtn = document.getElementById('restartBtn');
+const downloadCertificateBtn = document.getElementById('downloadCertificateBtn');
+
+// Éléments du quiz
 const questionText = document.getElementById('questionText');
 const timeDisplay = document.getElementById('timeDisplay');
 const progressDisplay = document.getElementById('progressDisplay');
 const questionImage = document.getElementById('questionImage');
-const answerBoxes = document.querySelectorAll('[data-answer]');
+const answerCards = document.querySelectorAll('.answer-card');
+const questionProgressFill = document.getElementById('questionProgressFill');
+const timeProgressFill = document.getElementById('timeProgressFill');
 
-// Chargement du quiz preset
-async function loadQuizData() {
+// Chargement du quiz preset au démarrage
+async function loadPresetQuiz() {
     try {
         const response = await fetch('questions.json');
         const data = await response.json();
         quizData = data.quiz;
-        
-        console.log('Quiz chargé:', quizData);
-        initializeCarousel();
+        console.log('Quiz preset chargé:', quizData);
     } catch (error) {
         console.error('Erreur de chargement du quiz:', error);
     }
 }
 
-// Initialiser le carousel avec les cartes
-function initializeCarousel() {
-    const cards = [
-        {
-            type: 'preset',
-            title: quizData.title,
-            description: quizData.description || quizData.subtitle,
-            image: quizData.cardImage || '',
-            icon: '🎮',
-            action: () => startQuiz()
-        },
-        {
-            type: 'upload',
-            title: 'Import Quiz',
-            description: 'Importez votre propre fichier JSON de quiz personnalisé',
-            icon: '📁',
-            action: () => document.getElementById('jsonFileInput').click()
-        },
-        {
-            type: 'create',
-            title: 'Create Quiz',
-            description: 'Créez votre propre quiz avec notre éditeur intuitif',
-            icon: '✏️',
-            action: () => showCreateQuizPage()
+// Event listeners pour les cartes principales
+presetQuizCard.addEventListener('click', () => {
+    loadPresetQuiz().then(() => {
+        if (quizData) {
+            startQuiz();
         }
-    ];
-    
-    // Dupliquer les cartes pour l'effet de boucle infinie
-    const allCards = [...cards, ...cards, ...cards];
-    
-    carouselTrack.innerHTML = '';
-    allCards.forEach(card => {
-        const cardElement = createCard(card);
-        carouselTrack.appendChild(cardElement);
     });
-}
+});
 
-// Créer une carte
-function createCard(cardData) {
-    const card = document.createElement('div');
-    card.className = `quiz-card ${cardData.type}-card`;
-    
-    const imageSection = document.createElement('div');
-    imageSection.className = 'quiz-card-image';
-    
-    if (cardData.image && cardData.type === 'preset') {
-        const img = document.createElement('img');
-        img.src = cardData.image;
-        img.style.width = '100%';
-        img.style.height = '100%';
-        img.style.objectFit = 'cover';
-        imageSection.appendChild(img);
-    } else {
-        imageSection.textContent = cardData.icon;
-    }
-    
-    const content = document.createElement('div');
-    content.className = 'quiz-card-content';
-    
-    const title = document.createElement('div');
-    title.className = 'quiz-card-title';
-    title.textContent = cardData.title;
-    
-    const description = document.createElement('div');
-    description.className = 'quiz-card-description';
-    description.textContent = cardData.description;
-    
-    content.appendChild(title);
-    content.appendChild(description);
-    
-    card.appendChild(imageSection);
-    card.appendChild(content);
-    
-    card.addEventListener('click', cardData.action);
-    
-    return card;
-}
+createQuizCard.addEventListener('click', showCreateQuizPage);
 
-// Gestion de l'upload de fichier JSON
+importQuizBtn.addEventListener('click', () => {
+    jsonFileInput.click();
+});
+
+// Gestion de l'import de fichier JSON
 jsonFileInput.addEventListener('change', (e) => {
     const file = e.target.files[0];
     if (!file) return;
@@ -125,26 +71,85 @@ jsonFileInput.addEventListener('change', (e) => {
     reader.onload = (event) => {
         try {
             const data = JSON.parse(event.target.result);
-            quizData = data.quiz;
+            const quiz = data.quiz;
             
-            document.getElementById('mainTitle').textContent = quizData.title;
-            document.getElementById('mainSubtitle').textContent = quizData.subtitle;
+            // Ajouter le quiz à la liste des importés
+            importedQuizzes.push(quiz);
+            renderImportedQuizzes();
             
-            alert('Quiz chargé avec succès !');
-            startQuiz();
+            // Notification
+            showNotification('Quiz importé avec succès !');
         } catch (error) {
-            alert('Erreur lors de la lecture du fichier JSON : ' + error.message);
+            showNotification('Erreur lors de la lecture du fichier JSON', true);
         }
     };
     reader.readAsText(file);
     
-    // Reset l'input pour permettre de recharger le même fichier
+    // Reset l'input
     e.target.value = '';
 });
 
-// === CRÉATION DE QUIZ ===
+// Afficher les quiz importés
+function renderImportedQuizzes() {
+    if (importedQuizzes.length === 0) {
+        emptyState.style.display = 'block';
+        return;
+    }
+    
+    emptyState.style.display = 'none';
+    
+    // Vider la grille sauf l'empty state
+    importedQuizzesGrid.innerHTML = '';
+    
+    importedQuizzes.forEach((quiz, index) => {
+        const card = document.createElement('div');
+        card.className = 'imported-quiz-card';
+        
+        card.innerHTML = `
+            <h2 class="card-title">${quiz.title}</h2>
+            <p class="card-description">${quiz.description || quiz.subtitle}</p>
+            <div class="card-footer">
+                <span class="card-meta">${quiz.questions.length} questions · ${Math.ceil(quiz.duration / 60)} min</span>
+            </div>
+        `;
+        
+        card.addEventListener('click', () => {
+            quizData = quiz;
+            startQuiz();
+        });
+        
+        importedQuizzesGrid.appendChild(card);
+    });
+}
 
-// Boutons de création
+// Notification simple
+function showNotification(message, isError = false) {
+    const notification = document.createElement('div');
+    notification.style.cssText = `
+        position: fixed;
+        top: 20px;
+        right: 20px;
+        background: ${isError ? '#eb5757' : '#0f7b6c'};
+        color: white;
+        padding: 16px 24px;
+        border-radius: 8px;
+        font-size: 0.95rem;
+        font-weight: 500;
+        z-index: 10000;
+        animation: slideIn 0.3s ease;
+    `;
+    notification.textContent = message;
+    
+    document.body.appendChild(notification);
+    
+    setTimeout(() => {
+        notification.style.animation = 'slideOut 0.3s ease';
+        setTimeout(() => notification.remove(), 300);
+    }, 3000);
+}
+
+// ==================== CRÉATION DE QUIZ ====================
+
 const addQuestionBtn = document.getElementById('addQuestionBtn');
 const saveQuizBtn = document.getElementById('saveQuizBtn');
 const previewQuizBtn = document.getElementById('previewQuizBtn');
@@ -154,7 +159,6 @@ function showCreateQuizPage() {
     homepage.style.display = 'none';
     createQuizPage.style.display = 'block';
     
-    // Initialiser avec une question par défaut
     if (!createdQuiz) {
         createdQuiz = {
             title: "Mon Quiz",
@@ -176,7 +180,7 @@ function addNewQuestion() {
         answers: ["", "", "", ""],
         correctAnswer: 0,
         image: "",
-        answerImages: ["carre.jpg", "triangle.avif", "rond_simple.png", "losange.png"]
+        answerImages: []
     };
     createdQuiz.questions.push(newQuestion);
     renderQuestions();
@@ -192,43 +196,42 @@ function renderQuestions() {
         questionDiv.innerHTML = `
             <h3>Question ${index + 1}</h3>
             
-            <label>Question:
+            <label>Intitulé de la question
                 <textarea class="question-text" data-index="${index}">${question.question}</textarea>
             </label>
             
-            <label>Réponses:</label>
+            <label>Réponses</label>
             <div class="answer-inputs">
                 ${question.answers.map((answer, ansIndex) => `
                     <div class="answer-input-group">
-                        <label>Réponse ${ansIndex + 1}:</label>
+                        <label>Réponse ${String.fromCharCode(65 + ansIndex)}</label>
                         <input type="text" class="answer-input" data-index="${index}" data-answer="${ansIndex}" value="${answer}">
                     </div>
                 `).join('')}
             </div>
             
             <div class="correct-answer-selector">
-                <label>Bonne réponse:
+                <label>Bonne réponse
                     <select class="correct-answer" data-index="${index}">
-                        <option value="0" ${question.correctAnswer === 0 ? 'selected' : ''}>Réponse 1</option>
-                        <option value="1" ${question.correctAnswer === 1 ? 'selected' : ''}>Réponse 2</option>
-                        <option value="2" ${question.correctAnswer === 2 ? 'selected' : ''}>Réponse 3</option>
-                        <option value="3" ${question.correctAnswer === 3 ? 'selected' : ''}>Réponse 4</option>
+                        <option value="0" ${question.correctAnswer === 0 ? 'selected' : ''}>Réponse A</option>
+                        <option value="1" ${question.correctAnswer === 1 ? 'selected' : ''}>Réponse B</option>
+                        <option value="2" ${question.correctAnswer === 2 ? 'selected' : ''}>Réponse C</option>
+                        <option value="3" ${question.correctAnswer === 3 ? 'selected' : ''}>Réponse D</option>
                     </select>
                 </label>
             </div>
             
-            <label>URL de l'image d'illustration:
+            <label>Image d'illustration (URL optionnelle)
                 <input type="text" class="question-image" data-index="${index}" value="${question.image}" placeholder="https://...">
             </label>
             
             <div class="question-actions">
-                <button class="delete-question-btn" data-index="${index}">Supprimer</button>
+                <button class="delete-question-btn" data-index="${index}">Supprimer la question</button>
             </div>
         `;
         container.appendChild(questionDiv);
     });
     
-    // Ajouter les event listeners
     attachQuestionEditorListeners();
 }
 
@@ -258,7 +261,7 @@ function attachQuestionEditorListeners() {
         });
     });
     
-    // Images
+    // Image
     document.querySelectorAll('.question-image').forEach(input => {
         input.addEventListener('input', (e) => {
             const index = parseInt(e.target.dataset.index);
@@ -266,15 +269,17 @@ function attachQuestionEditorListeners() {
         });
     });
     
-    // Supprimer question
+    // Suppression
     document.querySelectorAll('.delete-question-btn').forEach(btn => {
         btn.addEventListener('click', (e) => {
             const index = parseInt(e.target.dataset.index);
-            if (confirm('Êtes-vous sûr de vouloir supprimer cette question ?')) {
+            if (createdQuiz.questions.length > 1) {
                 createdQuiz.questions.splice(index, 1);
                 // Réindexer les IDs
                 createdQuiz.questions.forEach((q, i) => q.id = i + 1);
                 renderQuestions();
+            } else {
+                showNotification('Un quiz doit contenir au moins une question', true);
             }
         });
     });
@@ -285,89 +290,85 @@ addQuestionBtn.addEventListener('click', addNewQuestion);
 
 // Sauvegarder le quiz
 saveQuizBtn.addEventListener('click', () => {
-    // Mettre à jour les config
+    // Mettre à jour la config
     createdQuiz.title = document.getElementById('quizTitle').value;
     createdQuiz.subtitle = document.getElementById('quizSubtitle').value;
     createdQuiz.description = document.getElementById('quizDescription').value;
-    createdQuiz.cardImage = document.getElementById('quizCardImage').value;
     createdQuiz.duration = parseInt(document.getElementById('quizDuration').value);
     
+    // Vérifier qu'il n'y a pas de questions vides
+    const emptyQuestions = createdQuiz.questions.filter(q => 
+        !q.question || q.answers.some(a => !a)
+    );
+    
+    if (emptyQuestions.length > 0) {
+        showNotification('Certaines questions sont incomplètes', true);
+        return;
+    }
+    
     // Créer le fichier JSON
-    const jsonData = JSON.stringify({ quiz: createdQuiz }, null, 2);
-    const blob = new Blob([jsonData], { type: 'application/json' });
-    const url = URL.createObjectURL(blob);
-    
-    // Télécharger
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = 'mon-quiz.json';
-    a.click();
-    
+    const dataStr = JSON.stringify({ quiz: createdQuiz }, null, 2);
+    const dataBlob = new Blob([dataStr], { type: 'application/json' });
+    const url = URL.createObjectURL(dataBlob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = `${createdQuiz.title.replace(/\s+/g, '_')}.json`;
+    link.click();
     URL.revokeObjectURL(url);
-    alert('Quiz téléchargé !');
+    
+    showNotification('Quiz téléchargé avec succès !');
 });
 
 // Prévisualiser le quiz
 previewQuizBtn.addEventListener('click', () => {
-    // Mettre à jour les config
+    // Mettre à jour la config
     createdQuiz.title = document.getElementById('quizTitle').value;
     createdQuiz.subtitle = document.getElementById('quizSubtitle').value;
     createdQuiz.description = document.getElementById('quizDescription').value;
-    createdQuiz.cardImage = document.getElementById('quizCardImage').value;
     createdQuiz.duration = parseInt(document.getElementById('quizDuration').value);
     
-    if (createdQuiz.questions.length === 0) {
-        alert('Ajoutez au moins une question avant de prévisualiser');
-        return;
-    }
+    // Vérifier les questions
+    const emptyQuestions = createdQuiz.questions.filter(q => 
+        !q.question || q.answers.some(a => !a)
+    );
     
-    // Vérifier que toutes les questions ont du texte
-    const emptyQuestions = createdQuiz.questions.filter(q => !q.question.trim());
     if (emptyQuestions.length > 0) {
-        alert('Certaines questions sont vides. Veuillez les compléter.');
+        showNotification('Certaines questions sont incomplètes', true);
         return;
     }
     
-    // Charger le quiz créé
+    // Charger et démarrer
     quizData = createdQuiz;
-    document.getElementById('mainTitle').textContent = quizData.title;
-    document.getElementById('mainSubtitle').textContent = quizData.subtitle;
-    
-    // Cacher la page de création et démarrer le quiz
     createQuizPage.style.display = 'none';
-    homepage.style.display = 'flex';
     startQuiz();
 });
 
-// Retour au menu depuis création
+// Retour depuis création
 backFromCreateBtn.addEventListener('click', () => {
     createQuizPage.style.display = 'none';
-    homepage.style.display = 'flex';
-    document.getElementById('mainSubtitle').textContent = 'Choisissez votre quiz';
+    homepage.style.display = 'block';
 });
 
+// ==================== QUIZ ====================
 
-// Démarrer le quiz
 function startQuiz() {
     if (!quizData) {
-        alert('Le questionnaire n\'est pas encore chargé');
+        showNotification('Le questionnaire n\'est pas chargé', true);
         return;
     }
     
-    // Réinitialiser les variables
+    // Réinitialiser
     currentQuestionIndex = 0;
     userAnswers = [];
     elapsedTime = 0;
     
-    // Animation de glissement vers le haut (le quiz passe PAR DESSUS)
-    quizpage.style.display = 'flex';
+    // Afficher la page quiz
+    homepage.style.display = 'none';
+    createQuizPage.style.display = 'none';
+    resultspage.style.display = 'none';
+    quizpage.style.display = 'block';
     
-    // Attendre un court instant avant d'ajouter la classe slide-up au quiz
-    setTimeout(() => {
-        quizpage.classList.add('slide-up');
-    }, 50);
-    
-    // Démarrer le chronomètre
+    // Démarrer le chrono
     startTime = Date.now();
     startTimer();
     
@@ -375,40 +376,37 @@ function startQuiz() {
     displayQuestion();
 }
 
-// Afficher une question
 function displayQuestion() {
     const question = quizData.questions[currentQuestionIndex];
     
-    // Mettre à jour le texte de la question
+    // Texte de la question
     questionText.textContent = question.question;
     
-    // Mettre à jour la progression
-    progressDisplay.textContent = `Question: ${currentQuestionIndex + 1} / ${quizData.questions.length}`;
-    
-    // Mettre à jour la jauge de progression
+    // Progression
+    progressDisplay.textContent = `Question ${currentQuestionIndex + 1} / ${quizData.questions.length}`;
     const progressPercent = ((currentQuestionIndex + 1) / quizData.questions.length) * 100;
-    document.querySelector('.advencement_progress').style.setProperty('--progress', progressPercent + '%');
+    questionProgressFill.style.width = progressPercent + '%';
     
-    // Afficher les réponses avec leurs images
-    answerBoxes.forEach((box, index) => {
+    // Réponses avec images en arrière-plan
+    answerCards.forEach((card, index) => {
+        const answerTextElement = card.querySelector('.answer-text');
         if (question.answers[index]) {
-            // Créer ou mettre à jour le texte de la réponse
-            box.innerHTML = `<span class="answer-text">${question.answers[index]}</span>`;
-            box.style.display = 'flex';
-            box.classList.remove('selected', 'correct', 'incorrect');
+            answerTextElement.textContent = question.answers[index];
+            card.style.display = 'flex';
+            card.classList.remove('selected');
             
             // Appliquer l'image de fond si elle existe
             if (question.answerImages && question.answerImages[index]) {
-                box.style.setProperty('--bg-image', `url('${question.answerImages[index]}')`);
+                card.style.setProperty('--bg-image', `url('${question.answerImages[index]}')`);
             } else {
-                box.style.setProperty('--bg-image', 'none');
+                card.style.setProperty('--bg-image', 'none');
             }
         } else {
-            box.style.display = 'none';
+            card.style.display = 'none';
         }
     });
     
-    // Afficher l'image d'illustration si elle existe
+    // Image
     if (question.image && question.image !== '') {
         questionImage.src = question.image;
         questionImage.style.display = 'block';
@@ -416,32 +414,28 @@ function displayQuestion() {
         questionImage.style.display = 'none';
     }
     
-    // Vérifier si l'utilisateur a déjà répondu à cette question
+    // Vérifier si déjà répondu
     if (userAnswers[currentQuestionIndex] !== undefined) {
         highlightAnswer(userAnswers[currentQuestionIndex]);
     }
 }
 
-// Gérer le chronomètre
 function startTimer() {
     timerInterval = setInterval(() => {
         elapsedTime = Math.floor((Date.now() - startTime) / 1000);
         const remainingTime = quizData.duration - elapsedTime;
         
-        timeDisplay.textContent = `Temps: ${elapsedTime}s / ${quizData.duration}s`;
+        timeDisplay.textContent = `${elapsedTime}s / ${quizData.duration}s`;
         
-        // Mettre à jour la jauge de temps
         const timePercent = (elapsedTime / quizData.duration) * 100;
-        document.querySelector('.time_progress').style.setProperty('--progress', timePercent + '%');
+        timeProgressFill.style.width = Math.min(timePercent, 100) + '%';
         
-        // Si le temps est écoulé
         if (remainingTime <= 0) {
             endQuiz();
         }
     }, 1000);
 }
 
-// Arrêter le chronomètre
 function stopTimer() {
     if (timerInterval) {
         clearInterval(timerInterval);
@@ -449,35 +443,27 @@ function stopTimer() {
     }
 }
 
-// Gérer la sélection d'une réponse
 function selectAnswer(answerIndex) {
-    // Enregistrer la réponse
     userAnswers[currentQuestionIndex] = answerIndex;
-    
-    // Mettre en évidence la réponse sélectionnée
     highlightAnswer(answerIndex);
 }
 
-// Mettre en évidence une réponse
 function highlightAnswer(answerIndex) {
-    answerBoxes.forEach((box, index) => {
+    answerCards.forEach((card, index) => {
         if (index === answerIndex) {
-            box.classList.add('selected');
+            card.classList.add('selected');
         } else {
-            box.classList.remove('selected');
+            card.classList.remove('selected');
         }
     });
 }
 
-// Passer à la question suivante
 function nextQuestion() {
-    // Vérifier si une réponse a été sélectionnée
     if (userAnswers[currentQuestionIndex] === undefined) {
-        alert('Veuillez sélectionner une réponse avant de continuer');
+        showNotification('Veuillez sélectionner une réponse', true);
         return;
     }
     
-    // Passer à la question suivante ou terminer
     if (currentQuestionIndex < quizData.questions.length - 1) {
         currentQuestionIndex++;
         displayQuestion();
@@ -486,13 +472,36 @@ function nextQuestion() {
     }
 }
 
-// Terminer le quiz
+// Générer un ID de certificat unique avec pattern mathématique
+function generateCertificateId() {
+    const timestamp = Date.now();
+    const quizHash = hashString(quizData.title);
+    const scoreHash = userAnswers.reduce((acc, val) => acc + val, 0);
+    
+    // Pattern: QZ-XXXXXX-YYYY-ZZZZ
+    const part1 = (timestamp % 999999).toString().padStart(6, '0');
+    const part2 = (quizHash % 9999).toString().padStart(4, '0');
+    const part3 = ((scoreHash * 137 + timestamp) % 9999).toString().padStart(4, '0');
+    
+    return `QZ-${part1}-${part2}-${part3}`;
+}
+
+// Fonction de hachage simple
+function hashString(str) {
+    let hash = 0;
+    for (let i = 0; i < str.length; i++) {
+        const char = str.charCodeAt(i);
+        hash = ((hash << 5) - hash) + char;
+        hash = hash & hash;
+    }
+    return Math.abs(hash);
+}
+
 function endQuiz() {
     stopTimer();
     
-    // Cacher le quiz, afficher les résultats
     quizpage.style.display = 'none';
-    resultspage.style.display = 'flex';
+    resultspage.style.display = 'block';
     
     // Calculer le score
     let correctAnswers = 0;
@@ -504,15 +513,17 @@ function endQuiz() {
     
     const score = (correctAnswers / quizData.questions.length * 100).toFixed(1);
     
-    // Afficher le score
-    document.getElementById('scoreDisplay').textContent = 
-        `Score: ${correctAnswers} / ${quizData.questions.length} (${score}%)`;
+    // Générer l'ID du certificat
+    certificateId = generateCertificateId();
     
-    // Afficher les détails
+    document.getElementById('scoreDisplay').textContent = 
+        `${correctAnswers} / ${quizData.questions.length} (${score}%)`;
+    document.getElementById('certificateId').textContent = 
+        `ID Certificat: ${certificateId}`;
+    
     displayDetailedResults();
 }
 
-// Afficher les résultats détaillés
 function displayDetailedResults() {
     const detailedResults = document.getElementById('detailedResults');
     detailedResults.innerHTML = '';
@@ -535,30 +546,175 @@ function displayDetailedResults() {
     });
 }
 
-// Recommencer le quiz
 function restartQuiz() {
     resultspage.style.display = 'none';
-    
-    // Réinitialiser les animations
-    quizpage.classList.remove('slide-up');
-    
-    // Attendre la fin de l'animation avant de cacher
-    setTimeout(() => {
-        quizpage.style.display = 'none';
-        // Retour au menu principal avec carousel
-        homepage.style.display = 'flex';
-        document.getElementById('mainSubtitle').textContent = 'Choisissez votre quiz';
-    }, 1000);
+    quizpage.style.display = 'none';
+    homepage.style.display = 'block';
 }
 
 // Event listeners
 nextBtn.addEventListener('click', nextQuestion);
 restartBtn.addEventListener('click', restartQuiz);
 
-// Ajouter des event listeners aux réponses
-answerBoxes.forEach((box, index) => {
-    box.addEventListener('click', () => selectAnswer(index));
+answerCards.forEach((card, index) => {
+    card.addEventListener('click', () => selectAnswer(index));
 });
 
-// Charger les données au chargement de la page
-loadQuizData();
+// Télécharger le certificat PDF
+downloadCertificateBtn.addEventListener('click', async () => {
+    try {
+        // Import de jsPDF depuis CDN
+        const script = document.createElement('script');
+        script.src = 'https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js';
+        document.head.appendChild(script);
+        
+        script.onload = () => {
+            const { jsPDF } = window.jspdf;
+            const doc = new jsPDF();
+            
+            // Calculer le score
+            let correctAnswers = 0;
+            quizData.questions.forEach((question, index) => {
+                if (userAnswers[index] === question.correctAnswer) {
+                    correctAnswers++;
+                }
+            });
+            const score = (correctAnswers / quizData.questions.length * 100).toFixed(1);
+            
+            // Titre
+            doc.setFontSize(28);
+            doc.setFont(undefined, 'bold');
+            doc.text('CERTIFICAT DE COMPLETION', 105, 40, { align: 'center' });
+            
+            // Ligne décorative
+            doc.setDrawColor(0, 0, 0);
+            doc.setLineWidth(0.5);
+            doc.line(20, 50, 190, 50);
+            
+            // Nom du quiz
+            doc.setFontSize(18);
+            doc.setFont(undefined, 'normal');
+            doc.text('Quiz:', 20, 70);
+            doc.setFont(undefined, 'bold');
+            doc.text(quizData.title, 40, 70);
+            
+            // Score
+            doc.setFontSize(16);
+            doc.setFont(undefined, 'normal');
+            doc.text('Score obtenu:', 20, 85);
+            doc.setFont(undefined, 'bold');
+            doc.text(`${correctAnswers} / ${quizData.questions.length} (${score}%)`, 65, 85);
+            
+            // Date
+            doc.setFont(undefined, 'normal');
+            const date = new Date().toLocaleDateString('fr-FR');
+            doc.text(`Date: ${date}`, 20, 100);
+            
+            // ID du certificat
+            doc.setFontSize(12);
+            doc.text(`ID Certificat: ${certificateId}`, 20, 110);
+            
+            // Détails des questions
+            doc.setFontSize(14);
+            doc.setFont(undefined, 'bold');
+            doc.text('Detail des reponses:', 20, 130);
+            
+            let yPos = 145;
+            doc.setFontSize(10);
+            doc.setFont(undefined, 'normal');
+            
+            quizData.questions.forEach((question, index) => {
+                if (yPos > 270) {
+                    doc.addPage();
+                    yPos = 20;
+                }
+                
+                const isCorrect = userAnswers[index] === question.correctAnswer;
+                const status = isCorrect ? '[CORRECT]' : '[INCORRECT]';
+                
+                // Question
+                doc.setFont(undefined, 'bold');
+                doc.text(`Q${index + 1}: ${question.question.substring(0, 60)}${question.question.length > 60 ? '...' : ''}`, 20, yPos);
+                
+                // Réponse
+                doc.setFont(undefined, 'normal');
+                const userAnswerText = question.answers[userAnswers[index]] || 'Pas de reponse';
+                doc.setTextColor(isCorrect ? 0 : 255, isCorrect ? 128 : 0, 0);
+                doc.text(`Votre reponse: ${userAnswerText} ${status}`, 25, yPos + 5);
+                
+                // Bonne réponse si incorrect
+                if (!isCorrect) {
+                    doc.setTextColor(0, 128, 0);
+                    doc.text(`Bonne reponse: ${question.answers[question.correctAnswer]}`, 25, yPos + 10);
+                    yPos += 20;
+                } else {
+                    yPos += 15;
+                }
+                
+                doc.setTextColor(0, 0, 0);
+            });
+            
+            // Footer
+            doc.setFontSize(8);
+            doc.setTextColor(128, 128, 128);
+            const pageCount = doc.internal.getNumberOfPages();
+            for (let i = 1; i <= pageCount; i++) {
+                doc.setPage(i);
+                doc.text(`Ctrl+Alt+Histoire - Certificat ${certificateId}`, 105, 290, { align: 'center' });
+                doc.text(`Page ${i} / ${pageCount}`, 105, 285, { align: 'center' });
+            }
+            
+            // Télécharger
+            doc.save(`Certificat_${quizData.title.replace(/\s+/g, '_')}_${certificateId}.pdf`);
+            
+            showNotification('Certificat téléchargé avec succès !');
+        };
+    } catch (error) {
+        console.error('Erreur lors de la génération du PDF:', error);
+        showNotification('Erreur lors de la génération du certificat', true);
+    }
+});
+
+// Animations CSS inline
+const style = document.createElement('style');
+style.textContent = `
+    @keyframes slideIn {
+        from {
+            transform: translateX(100%);
+            opacity: 0;
+        }
+        to {
+            transform: translateX(0);
+            opacity: 1;
+        }
+    }
+    
+    @keyframes slideOut {
+        from {
+            transform: translateX(0);
+            opacity: 1;
+        }
+        to {
+            transform: translateX(100%);
+            opacity: 0;
+        }
+    }
+`;
+document.head.appendChild(style);
+
+const halo = document.getElementById('halo');
+
+        // On écoute le mouvement de la souris sur tout le document
+        document.addEventListener('mousemove', (e) => {
+            // Utilisation des coordonnées clientX et clientY
+            const x = e.clientX;
+            const y = e.clientY;
+
+            // On met à jour la position avec translate3d pour de meilleures performances (GPU)
+            // Le -50% est déjà géré par le CSS via transform: translate(-50%, -50%)
+            // On concatène les deux ici :
+            halo.style.transform = `translate3d(calc(${x}px - 50%), calc(${y}px - 50%), 0)`;
+        });
+
+// Charger le quiz preset au démarrage
+loadPresetQuiz();
