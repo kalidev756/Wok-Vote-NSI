@@ -17,6 +17,32 @@
         </video>
     </div>
     <div class="cursor-halo" id="halo"></div>
+
+    <!-- Modal QR Code -->
+    <div class="qr-modal" id="qrModal">
+        <div class="qr-modal-content">
+            <button class="qr-modal-close" id="qrModalClose">&times;</button>
+            <h2 class="qr-modal-title">Code QR du Quiz</h2>
+            <p class="qr-modal-subtitle">Scannez ce code pour partager le quiz</p>
+            <div class="qr-code-container" id="qrCodeContainer"></div>
+            <button class="btn-primary" id="downloadQrBtn">Télécharger le QR Code</button>
+        </div>
+    </div>
+
+    <!-- Modal Scanner QR -->
+    <div class="qr-modal" id="scannerModal">
+        <div class="qr-modal-content">
+            <button class="qr-modal-close" id="scannerModalClose">&times;</button>
+            <h2 class="qr-modal-title">Scanner un QR Code</h2>
+            <p class="qr-modal-subtitle">Positionnez le QR code devant la caméra</p>
+            <div class="scanner-container">
+                <video id="scannerVideo" autoplay></video>
+                <canvas id="scannerCanvas" style="display: none;"></canvas>
+            </div>
+            <p class="scanner-status" id="scannerStatus">Initialisation de la caméra...</p>
+        </div>
+    </div>
+
     <!-- Page d'accueil -->
     <div class="homepage" id="homepage">
         <div class="homepage-header">
@@ -47,17 +73,23 @@
         <div class="imported-section">
             <div class="section-header">
                 <h3 class="section-title">Mes Quiz Importés</h3>
-                <button class="import-btn" id="importQuizBtn">
-                    <span class="btn-icon">↑</span>
-                    Importer un quiz
-                </button>
+                <div class="header-buttons">
+                    <button class="import-btn scanner-btn" id="scanQrBtn">
+                        <span class="btn-icon"></span>
+                        Lire QR
+                    </button>
+                    <button class="import-btn" id="importQuizBtn">
+                        <span class="btn-icon">↑</span>
+                        Importer un quiz
+                    </button>
+                </div>
             </div>
             
             <div class="imported-quizzes-grid" id="importedQuizzesGrid">
                 <!-- Message vide au début -->
                 <div class="empty-state" id="emptyState">
                     <p>Aucun quiz importé</p>
-                    <p class="empty-hint">Cliquez sur "Importer un quiz" pour ajouter vos propres questionnaires</p>
+                    <p class="empty-hint">Cliquez sur "Importer un quiz" ou "Lire QR" pour ajouter vos propres questionnaires</p>
                 </div>
             </div>
         </div>
@@ -191,8 +223,9 @@
         </div>
     </div>
 
+    <!-- Scripts -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/jsqr@1.4.0/dist/jsQR.min.js"></script>
     <script src="quiz.js"></script>
 </body>
-</html>
-</html>
 </html>
