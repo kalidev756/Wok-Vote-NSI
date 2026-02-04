@@ -94,11 +94,9 @@
                 <h3 class="section-title">Mes Quiz Importés</h3>
                 <div class="header-buttons">
                     <button class="import-btn scanner-btn" id="joinQuizOpenBtn">
-                        <span class="btn-icon"></span>
                         Rejoindre
                     </button>
                     <button class="import-btn" id="importQuizBtn">
-                        <span class="btn-icon"></span>
                         Importer un quiz
                     </button>
                 </div>
@@ -166,6 +164,9 @@
     <!-- Page du quiz -->
     <div class="quiz-page" id="quizpage">
         <div class="quiz-header">
+            <div class="quiz-header-top">
+                <button id="quitQuizBtn" class="quit-quiz-btn">← Quitter le quiz</button>
+            </div>
             <div class="quiz-progress-info">
                 <span id="progressDisplay" class="progress-text">Question 1 / 5</span>
                 <span id="timeDisplay" class="time-text">0s / 300s</span>
