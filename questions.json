@@ -17,7 +17,12 @@
         ],
         "correctAnswer": 0,
         "image": "",
-        "answerImages": []
+        "answerImages": [
+          "carre.jpg",
+          "triangle.avif",
+          "rond_simple.png",
+          "losange.png"
+        ]
       },
       {
         "id": 2,
@@ -30,7 +35,12 @@
         ],
         "correctAnswer": 2,
         "image": "",
-        "answerImages": []
+        "answerImages": [
+          "carre.jpg",
+          "triangle.avif",
+          "rond_simple.png",
+          "losange.png"
+        ]
       },
       {
         "id": 3,
@@ -43,7 +53,12 @@
         ],
         "correctAnswer": 0,
         "image": "",
-        "answerImages": []
+        "answerImages": [
+          "carre.jpg",
+          "triangle.avif",
+          "rond_simple.png",
+          "losange.png"
+        ]
       },
       {
         "id": 4,
@@ -56,7 +71,12 @@
         ],
         "correctAnswer": 2,
         "image": "",
-        "answerImages": []
+        "answerImages": [
+          "carre.jpg",
+          "triangle.avif",
+          "rond_simple.png",
+          "losange.png"
+        ]
       },
       {
         "id": 5,
@@ -69,7 +89,12 @@
         ],
         "correctAnswer": 1,
         "image": "",
-        "answerImages": []
+        "answerImages": [
+          "carre.jpg",
+          "triangle.avif",
+          "rond_simple.png",
+          "losange.png"
+        ]
       }
     ]
   }
