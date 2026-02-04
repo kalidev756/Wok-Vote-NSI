@@ -62,6 +62,41 @@
         </div>
     </div>
 
+    <!-- Modal Leaderboard -->
+    <div class="leaderboard-modal" id="leaderboardModal">
+        <div class="leaderboard-modal-content">
+            <button class="qr-modal-close" id="leaderboardModalClose">&times;</button>
+            <div class="leaderboard-header">
+                <h2 class="leaderboard-title" id="leaderboardTitle">Classement</h2>
+            </div>
+            <div id="leaderboardContent">
+                <!-- Contenu chargé dynamiquement -->
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal Pseudo Input -->
+    <div class="qr-modal" id="pseudoModal">
+        <div class="qr-modal-content">
+            <h2 class="qr-modal-title">Félicitations !</h2>
+            <p class="qr-modal-subtitle">Entrez votre pseudo pour enregistrer votre score</p>
+            
+            <div class="join-input-container">
+                <input 
+                    type="text" 
+                    id="pseudoInput" 
+                    class="code-input" 
+                    placeholder="Votre pseudo"
+                    maxlength="20"
+                    autocomplete="off"
+                >
+                <button class="btn-primary" id="submitScoreBtn">Enregistrer</button>
+            </div>
+            
+            <button class="btn-secondary" id="skipScoreBtn" style="margin-top: 15px; width: 100%;">Passer</button>
+        </div>
+    </div>
+
     <!-- Page d'accueil -->
     <div class="homepage" id="homepage">
         <div class="homepage-header">
@@ -88,10 +123,10 @@
             </div>
         </div>
 
-        <!-- Section des quiz importés -->
+        <!-- Section bibliothèque de quiz -->
         <div class="imported-section">
             <div class="section-header">
-                <h3 class="section-title">Mes Quiz Importés</h3>
+                <h3 class="section-title">Bibliothèque de Quiz</h3>
                 <div class="header-buttons">
                     <button class="import-btn scanner-btn" id="joinQuizOpenBtn">
                         Rejoindre
@@ -102,11 +137,22 @@
                 </div>
             </div>
             
+            <!-- Barre de recherche -->
+            <div class="library-search">
+                <input 
+                    type="text" 
+                    id="librarySearchInput" 
+                    class="search-input" 
+                    placeholder="🔍 Rechercher un quiz..."
+                >
+                <button class="btn-secondary" id="loadAllQuizzesBtn">Tout afficher</button>
+            </div>
+            
             <div class="imported-quizzes-grid" id="importedQuizzesGrid">
                 <!-- Message vide au début -->
                 <div class="empty-state" id="emptyState">
-                    <p>Aucun quiz importé</p>
-                    <p class="empty-hint">Cliquez sur "Importer un quiz" ou "Rejoindre" pour ajouter vos propres questionnaires</p>
+                    <p>Aucun quiz chargé</p>
+                    <p class="empty-hint">Cliquez sur "Tout afficher" pour charger tous les quiz disponibles</p>
                 </div>
             </div>
         </div>
