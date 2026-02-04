@@ -325,9 +325,15 @@ function checkURLForCode() {
         
         console.log('Code détecté dans l\'URL:', normalizedCode);
         
+        // Afficher immédiatement la notification de préparation
+        showNotification('Quiz en préparation...');
+        
         setTimeout(async () => {
             try {
                 const quiz = await loadQuizFromSupabase(normalizedCode);
+                
+                // Sauvegarder le code du quiz pour pouvoir enregistrer le score
+                currentQuizCode = normalizedCode;
                 
                 showNotification('Quiz chargé ! Lancement...');
                 
@@ -445,6 +451,9 @@ async function joinQuizWithCode() {
     
     try {
         const quiz = await loadQuizFromSupabase(code);
+        
+        // Sauvegarder le code du quiz pour pouvoir enregistrer le score
+        currentQuizCode = code;
         
         joinStatus.textContent = 'Quiz chargé ! Lancement...';
         joinStatus.className = 'join-status success';
