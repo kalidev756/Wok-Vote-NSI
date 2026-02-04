@@ -1,6 +1,6 @@
 // ============================================
 // CTRL+ALT+HISTOIRE - QUIZ APPLICATION
-// Version complète avec Supabase
+// Version complète avec Supabase + QR Codes
 // ============================================
 
 // ==================== CONFIGURATION SUPABASE ====================
@@ -21,6 +21,16 @@ function initSupabase() {
         return false;
     }
 }
+
+// ==================== IMAGES UNIFORMES POUR LES RÉPONSES ====================
+
+const ANSWER_IMAGES = [
+    'carre.jpg',      // Réponse A
+    'triangle.avif',  // Réponse B
+    'rond_simple.png', // Réponse C
+    'losange.png'     // Réponse D
+];
+
 // ==================== FONCTIONS SUPABASE ====================
 
 async function generateUniqueCode() {
@@ -39,7 +49,7 @@ async function generateUniqueCode() {
 }
 
 function generateCodeClientSide() {
-    const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ';
+    const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
     let code = '';
     for (let i = 0; i < 6; i++) {
         if (i === 3) code += '-';
@@ -114,6 +124,28 @@ async function loadQuizFromSupabase(code) {
     }
 }
 
+async function getAllQuizzesFromSupabase() {
+    if (!supabaseClient) {
+        throw new Error('Supabase non initialisé');
+    }
+    
+    try {
+        const { data, error } = await supabaseClient
+            .from('shared_quizzes')
+            .select('code, quiz_data, created_at')
+            .gt('expires_at', new Date().toISOString())
+            .order('created_at', { ascending: false });
+        
+        if (error) throw error;
+        
+        console.log('✓ Quiz chargés depuis Supabase:', data.length);
+        return data;
+    } catch (error) {
+        console.error('Erreur chargement quiz:', error);
+        return [];
+    }
+}
+
 // ==================== VARIABLES GLOBALES ====================
 
 let quizData = null;
@@ -126,6 +158,7 @@ let createdQuiz = null;
 let importedQuizzes = [];
 let certificateId = '';
 let currentShareCode = null;
+let allSupabaseQuizzes = [];
 
 // ==================== ÉLÉMENTS DOM ====================
 
@@ -159,6 +192,7 @@ const importQuizBtn = document.getElementById('importQuizBtn');
 const nextBtn = document.getElementById('nextBtn');
 const restartBtn = document.getElementById('restartBtn');
 const downloadCertificateBtn = document.getElementById('downloadCertificateBtn');
+const quitQuizBtn = document.getElementById('quitQuizBtn');
 
 // Éléments du quiz
 const questionText = document.getElementById('questionText');
@@ -168,6 +202,98 @@ const questionImage = document.getElementById('questionImage');
 const answerCards = document.querySelectorAll('.answer-card');
 const questionProgressFill = document.getElementById('questionProgressFill');
 const timeProgressFill = document.getElementById('timeProgressFill');
+
+// ==================== GÉNÉRATION QR CODE ====================
+
+function generateQRCode(code) {
+    const url = `https://wok-vote-nsi.vercel.app/${code}`;
+    const qrApiUrl = `https://api.qrserver.com/v1/create-qr-code/?size=300x300&data=${encodeURIComponent(url)}`;
+    return qrApiUrl;
+}
+
+async function showQRModal(code) {
+    const modal = document.createElement('div');
+    modal.className = 'qr-modal active';
+    modal.innerHTML = `
+        <div class="qr-modal-content">
+            <button class="qr-modal-close" onclick="this.closest('.qr-modal').remove()">&times;</button>
+            <h2 class="qr-modal-title">QR Code du Quiz</h2>
+            <p class="qr-modal-subtitle">Scannez pour accéder au quiz</p>
+            
+            <div class="qr-code-container" style="text-align: center; margin: 30px 0;">
+                <img src="${generateQRCode(code)}" alt="QR Code" style="max-width: 300px; border-radius: 12px;">
+            </div>
+            
+            <div class="share-code-display">
+                <div class="code-box">${code}</div>
+                <p class="code-hint">https://wok-vote-nsi.vercel.app/${code}</p>
+            </div>
+            
+            <div class="share-buttons">
+                <button class="btn-primary" onclick="navigator.clipboard.writeText('${code}'); showNotification('Code copié!')">Copier le code</button>
+                <button class="btn-secondary" onclick="navigator.clipboard.writeText('https://wok-vote-nsi.vercel.app/${code}'); showNotification('Lien copié!')">Copier le lien</button>
+            </div>
+        </div>
+    `;
+    document.body.appendChild(modal);
+}
+
+// ==================== DÉTECTION CODE DANS URL ====================
+
+function checkURLForCode() {
+    // Détecter le code dans l'URL (fonctionne en localhost et production)
+    const pathParts = window.location.pathname.split('/').filter(p => p);
+    const potentialCode = pathParts[pathParts.length - 1];
+    
+    // Format XXX-XXX ou XXXXXX
+    const codeRegex = /^[A-Z0-9]{3}-[A-Z0-9]{3}$|^[A-Z0-9]{6}$/i;
+    
+    if (codeRegex.test(potentialCode)) {
+        const normalizedCode = potentialCode.length === 6 
+            ? potentialCode.slice(0, 3) + '-' + potentialCode.slice(3)
+            : potentialCode.toUpperCase();
+        
+        console.log('Code détecté dans l\'URL:', normalizedCode);
+        
+        // Attendre que Supabase soit initialisé
+        setTimeout(async () => {
+            try {
+                const quiz = await loadQuizFromSupabase(normalizedCode);
+                
+                // Vérifier si déjà importé
+                const alreadyImported = importedQuizzes.some(q => 
+                    JSON.stringify(q.quiz) === JSON.stringify(quiz)
+                );
+                
+                if (!alreadyImported) {
+                    importedQuizzes.push({
+                        quiz: quiz,
+                        code: normalizedCode
+                    });
+                    saveImportedQuizzes();
+                    displayImportedQuizzes();
+                }
+                
+                showNotification('Quiz chargé depuis l\'URL !');
+                
+                // Nettoyer l'URL (retour à la racine)
+                const baseUrl = window.location.origin;
+                window.history.replaceState({}, document.title, baseUrl);
+                
+                // Lancer le quiz automatiquement
+                setTimeout(() => {
+                    startQuiz(quiz);
+                }, 500);
+                
+            } catch (error) {
+                showNotification('Erreur: ' + error.message, true);
+                // Nettoyer l'URL même en cas d'erreur
+                const baseUrl = window.location.origin;
+                window.history.replaceState({}, document.title, baseUrl);
+            }
+        }, 1000);
+    }
+}
 
 // ==================== FONCTIONS DE PARTAGE ====================
 
@@ -225,53 +351,74 @@ async function copyShareCode() {
 function shareViaWhatsApp() {
     if (!currentShareCode) return;
     
-    const message = `Rejoins mon quiz Ctrl+Alt+Histoire !\n\nCode: ${currentShareCode}\n\nTu as 7 jours pour le faire !`;
+    const message = `Rejoins mon quiz Ctrl+Alt+Histoire !\n\nCode: ${currentShareCode}\nLien: https://wok-vote-nsi.vercel.app/${currentShareCode}\n\nTu as 7 jours pour le faire !`;
     const url = `https://wa.me/?text=${encodeURIComponent(message)}`;
     window.open(url, '_blank');
 }
+
+shareModalClose.addEventListener('click', closeShareModal);
+copyCodeBtn.addEventListener('click', copyShareCode);
+shareWhatsappBtn.addEventListener('click', shareViaWhatsApp);
+
+shareModal.addEventListener('click', (e) => {
+    if (e.target === shareModal) {
+        closeShareModal();
+    }
+});
 
 // ==================== FONCTIONS REJOINDRE QUIZ ====================
 
 function openJoinModal() {
     joinModal.classList.add('active');
     joinCodeInput.value = '';
-    joinCodeInput.focus();
     joinStatus.textContent = '';
+    joinCodeInput.focus();
 }
 
 function closeJoinModal() {
     joinModal.classList.remove('active');
-    joinCodeInput.value = '';
-    joinStatus.textContent = '';
 }
 
 async function joinQuizWithCode() {
     const code = joinCodeInput.value.trim().toUpperCase();
     
     if (!code || code.length < 6) {
-        joinStatus.textContent = 'Attention: Entrez un code valide';
+        joinStatus.textContent = 'Code invalide';
         joinStatus.className = 'join-status error';
         return;
     }
     
-    const formattedCode = code.length === 6 && !code.includes('-') 
-        ? code.substring(0, 3) + '-' + code.substring(3)
-        : code;
-    
-    joinStatus.textContent = 'Chargement du quiz...';
+    joinStatus.textContent = 'Chargement...';
     joinStatus.className = 'join-status loading';
     
     try {
-        const quiz = await loadQuizFromSupabase(formattedCode);
+        const quiz = await loadQuizFromSupabase(code);
         
-        importedQuizzes.push(quiz);
-        renderImportedQuizzes();
+        // Vérifier si déjà importé
+        const alreadyImported = importedQuizzes.some(q => 
+            JSON.stringify(q.quiz) === JSON.stringify(quiz)
+        );
         
-        closeJoinModal();
-        showNotification(`Quiz "${quiz.title}" importé avec succès!`);
+        if (alreadyImported) {
+            joinStatus.textContent = 'Quiz déjà importé!';
+            joinStatus.className = 'join-status error';
+            return;
+        }
         
-        quizData = quiz;
-        startQuiz();
+        importedQuizzes.push({
+            quiz: quiz,
+            code: code
+        });
+        
+        saveImportedQuizzes();
+        displayImportedQuizzes();
+        
+        joinStatus.textContent = 'Quiz importé avec succès!';
+        joinStatus.className = 'join-status success';
+        
+        setTimeout(() => {
+            closeJoinModal();
+        }, 1500);
         
     } catch (error) {
         joinStatus.textContent = 'Erreur: ' + error.message;
@@ -279,59 +426,139 @@ async function joinQuizWithCode() {
     }
 }
 
-// Event listeners modals
-shareModalClose.addEventListener('click', closeShareModal);
-copyCodeBtn.addEventListener('click', copyShareCode);
-shareWhatsappBtn.addEventListener('click', shareViaWhatsApp);
-
 joinModalClose.addEventListener('click', closeJoinModal);
-joinQuizOpenBtn.addEventListener('click', openJoinModal);
 joinQuizBtn.addEventListener('click', joinQuizWithCode);
+joinQuizOpenBtn.addEventListener('click', openJoinModal);
 
 joinCodeInput.addEventListener('keypress', (e) => {
-    if (e.key === 'Enter') joinQuizWithCode();
-});
-
-joinCodeInput.addEventListener('input', (e) => {
-    let value = e.target.value.toUpperCase().replace(/[^A-Z]/g, '');
-    if (value.length > 3) {
-        value = value.substring(0, 3) + '-' + value.substring(3, 6);
+    if (e.key === 'Enter') {
+        joinQuizWithCode();
     }
-    e.target.value = value;
-});
-
-shareModal.addEventListener('click', (e) => {
-    if (e.target === shareModal) closeShareModal();
 });
 
 joinModal.addEventListener('click', (e) => {
-    if (e.target === joinModal) closeJoinModal();
+    if (e.target === joinModal) {
+        closeJoinModal();
+    }
 });
 
-// ==================== QUIZ LOADING ====================
+// ==================== CHARGEMENT QUIZ DEPUIS SUPABASE ====================
 
-async function loadPresetQuiz() {
+async function loadAllSupabaseQuizzes() {
     try {
-        const response = await fetch('questions.json');
-        if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
-        const data = await response.json();
-        quizData = data.quiz;
-        console.log('Quiz preset chargé');
+        const quizzes = await getAllQuizzesFromSupabase();
+        
+        // Filtrer les doublons basés sur le contenu du quiz
+        const uniqueQuizzes = [];
+        const seenQuizzes = new Set();
+        
+        for (const item of quizzes) {
+            const quizString = JSON.stringify(item.quiz_data);
+            if (!seenQuizzes.has(quizString)) {
+                seenQuizzes.add(quizString);
+                uniqueQuizzes.push(item);
+            }
+        }
+        
+        allSupabaseQuizzes = uniqueQuizzes;
+        
+        // Ajouter à importedQuizzes s'ils n'existent pas déjà
+        for (const item of uniqueQuizzes) {
+            const alreadyImported = importedQuizzes.some(q => 
+                JSON.stringify(q.quiz) === JSON.stringify(item.quiz_data)
+            );
+            
+            if (!alreadyImported) {
+                importedQuizzes.push({
+                    quiz: item.quiz_data,
+                    code: item.code
+                });
+            }
+        }
+        
+        displayImportedQuizzes();
+        console.log('✓ Quiz Supabase chargés:', uniqueQuizzes.length);
+        
     } catch (error) {
-        console.error('Erreur chargement preset:', error);
-        showNotification('Erreur de chargement du quiz preset', true);
+        console.error('Erreur chargement quiz Supabase:', error);
     }
 }
 
-// ==================== HOMEPAGE ====================
+// ==================== GESTION QUIZ IMPORTÉS ====================
 
-presetQuizCard.addEventListener('click', () => {
-    loadPresetQuiz().then(() => {
-        if (quizData) startQuiz();
+function saveImportedQuizzes() {
+    try {
+        localStorage.setItem('importedQuizzes', JSON.stringify(importedQuizzes));
+    } catch (error) {
+        console.error('Erreur sauvegarde localStorage:', error);
+    }
+}
+
+function loadImportedQuizzes() {
+    try {
+        const saved = localStorage.getItem('importedQuizzes');
+        if (saved) {
+            importedQuizzes = JSON.parse(saved);
+        }
+    } catch (error) {
+        console.error('Erreur chargement localStorage:', error);
+        importedQuizzes = [];
+    }
+}
+
+function displayImportedQuizzes() {
+    if (importedQuizzes.length === 0) {
+        emptyState.style.display = 'block';
+        return;
+    }
+    
+    emptyState.style.display = 'none';
+    importedQuizzesGrid.innerHTML = '';
+    
+    importedQuizzes.forEach((item, index) => {
+        const quiz = item.quiz;
+        const code = item.code || '';
+        
+        const card = document.createElement('div');
+        card.className = 'imported-quiz-card';
+        
+        const questionsCount = quiz.questions ? quiz.questions.length : 0;
+        const duration = quiz.duration ? Math.floor(quiz.duration / 60) : 5;
+        
+        card.innerHTML = `
+            <h2 class="card-title">${quiz.title || 'Quiz sans titre'}</h2>
+            <p class="card-description">${quiz.description || quiz.subtitle || 'Aucune description'}</p>
+            <div class="card-footer">
+                <span class="card-meta">${questionsCount} questions · ${duration} min</span>
+                ${code ? `<button class="card-qr-btn" data-code="${code}">QR Code</button>` : ''}
+            </div>
+        `;
+        
+        card.addEventListener('click', (e) => {
+            if (!e.target.classList.contains('card-qr-btn')) {
+                startQuiz(quiz);
+            }
+        });
+        
+        if (code) {
+            const qrBtn = card.querySelector('.card-qr-btn');
+            qrBtn.addEventListener('click', (e) => {
+                e.stopPropagation();
+                showQRModal(code);
+            });
+        }
+        
+        importedQuizzesGrid.appendChild(card);
     });
-});
+}
 
-createQuizCard.addEventListener('click', showCreateQuizPage);
+function removeImportedQuiz(index) {
+    importedQuizzes.splice(index, 1);
+    saveImportedQuizzes();
+    displayImportedQuizzes();
+}
+
+// ==================== IMPORT FICHIER JSON ====================
 
 importQuizBtn.addEventListener('click', () => {
     jsonFileInput.click();
@@ -345,73 +572,243 @@ jsonFileInput.addEventListener('change', (e) => {
     reader.onload = (event) => {
         try {
             const data = JSON.parse(event.target.result);
-            const quiz = data.quiz || data;
             
-            importedQuizzes.push(quiz);
-            renderImportedQuizzes();
-            showNotification('Quiz importé avec succès !');
+            if (!data.quiz || !data.quiz.questions) {
+                showNotification('Format JSON invalide', true);
+                return;
+            }
+            
+            // Vérifier si déjà importé
+            const alreadyImported = importedQuizzes.some(q => 
+                JSON.stringify(q.quiz) === JSON.stringify(data.quiz)
+            );
+            
+            if (alreadyImported) {
+                showNotification('Quiz déjà importé!', true);
+                return;
+            }
+            
+            importedQuizzes.push({
+                quiz: data.quiz,
+                code: ''
+            });
+            
+            saveImportedQuizzes();
+            displayImportedQuizzes();
+            showNotification('Quiz importé avec succès!');
+            
         } catch (error) {
-            showNotification('Erreur lors de la lecture du fichier JSON', true);
+            showNotification('Erreur lors de la lecture du fichier', true);
         }
     };
+    
     reader.readAsText(file);
     e.target.value = '';
 });
 
-function renderImportedQuizzes() {
-    if (importedQuizzes.length === 0) {
-        emptyState.style.display = 'block';
+// ==================== QUIZ PRESET ====================
+
+let presetQuizData = null;
+
+async function loadPresetQuiz() {
+    try {
+        const response = await fetch('questions.json');
+        const data = await response.json();
+        presetQuizData = data.quiz;
+        
+        // Appliquer les images uniformes au quiz preset
+        if (presetQuizData && presetQuizData.questions) {
+            presetQuizData.questions.forEach(question => {
+                question.answerImages = [...ANSWER_IMAGES];
+            });
+        }
+    } catch (error) {
+        console.error('Erreur chargement questions.json:', error);
+    }
+}
+
+presetQuizCard.addEventListener('click', () => {
+    if (presetQuizData) {
+        startQuiz(presetQuizData);
+    } else {
+        showNotification('Quiz non disponible', true);
+    }
+});
+
+// ==================== CRÉATION DE QUIZ ====================
+
+createQuizCard.addEventListener('click', () => {
+    homepage.style.display = 'none';
+    createQuizPage.style.display = 'block';
+    initializeQuizCreator();
+});
+
+document.getElementById('backFromCreateBtn').addEventListener('click', () => {
+    createQuizPage.style.display = 'none';
+    homepage.style.display = 'block';
+});
+
+function initializeQuizCreator() {
+    createdQuiz = {
+        title: 'Mon Quiz',
+        subtitle: 'Description du quiz',
+        description: 'Testez vos connaissances',
+        duration: 300,
+        questions: []
+    };
+    
+    document.getElementById('quizTitle').value = createdQuiz.title;
+    document.getElementById('quizSubtitle').value = createdQuiz.subtitle;
+    document.getElementById('quizDescription').value = createdQuiz.description;
+    document.getElementById('quizDuration').value = createdQuiz.duration;
+    
+    renderQuestions();
+}
+
+function renderQuestions() {
+    const container = document.getElementById('questionsContainer');
+    container.innerHTML = '';
+    
+    if (createdQuiz.questions.length === 0) {
+        container.innerHTML = '<p style="color: #888; text-align: center; padding: 40px;">Aucune question. Cliquez sur "+ Ajouter" pour commencer.</p>';
         return;
     }
     
-    emptyState.style.display = 'none';
-    importedQuizzesGrid.innerHTML = '';
-    
-    importedQuizzes.forEach((quiz, index) => {
-        const card = document.createElement('div');
-        card.className = 'imported-quiz-card';
-        
-        card.innerHTML = `
-            <h2 class="card-title">${quiz.title}</h2>
-            <p class="card-description">${quiz.description || quiz.subtitle}</p>
-            <div class="card-footer">
-                <span class="card-meta">${quiz.questions.length} questions · ${Math.ceil(quiz.duration / 60)} min</span>
-                <button class="card-qr-btn" data-index="${index}">Partager</button>
+    createdQuiz.questions.forEach((q, index) => {
+        const questionDiv = document.createElement('div');
+        questionDiv.className = 'question-editor';
+        questionDiv.innerHTML = `
+            <div class="question-editor-header">
+                <h3>Question ${index + 1}</h3>
+                <button class="btn-danger" onclick="removeQuestion(${index})">Supprimer</button>
+            </div>
+            <div class="form-group">
+                <label class="form-label">Question</label>
+                <input type="text" class="form-input" value="${q.question}" onchange="updateQuestion(${index}, 'question', this.value)">
+            </div>
+            <div class="answer-inputs">
+                ${q.answers.map((answer, i) => `
+                    <div class="form-group">
+                        <label class="form-label">Réponse ${String.fromCharCode(65 + i)}</label>
+                        <input type="text" class="form-input" value="${answer}" onchange="updateAnswer(${index}, ${i}, this.value)">
+                    </div>
+                `).join('')}
+            </div>
+            <div class="form-group">
+                <label class="form-label">Bonne réponse (0-3)</label>
+                <input type="number" class="form-input" min="0" max="3" value="${q.correctAnswer}" onchange="updateQuestion(${index}, 'correctAnswer', parseInt(this.value))">
             </div>
         `;
-        
-        card.addEventListener('click', (e) => {
-            if (e.target.classList.contains('card-qr-btn')) return;
-            quizData = quiz;
-            startQuiz();
-        });
-        
-        const shareBtn = card.querySelector('.card-qr-btn');
-        shareBtn.addEventListener('click', (e) => {
-            e.stopPropagation();
-            showShareModal(quiz);
-        });
-        
-        importedQuizzesGrid.appendChild(card);
+        container.appendChild(questionDiv);
     });
 }
 
+function addQuestion() {
+    createdQuiz.questions.push({
+        id: createdQuiz.questions.length + 1,
+        question: 'Nouvelle question',
+        answers: ['Réponse A', 'Réponse B', 'Réponse C', 'Réponse D'],
+        correctAnswer: 0,
+        image: '',
+        answerImages: [...ANSWER_IMAGES]
+    });
+    renderQuestions();
+}
+
+function removeQuestion(index) {
+    createdQuiz.questions.splice(index, 1);
+    renderQuestions();
+}
+
+function updateQuestion(index, field, value) {
+    createdQuiz.questions[index][field] = value;
+}
+
+function updateAnswer(questionIndex, answerIndex, value) {
+    createdQuiz.questions[questionIndex].answers[answerIndex] = value;
+}
+
+document.getElementById('addQuestionBtn').addEventListener('click', addQuestion);
+
+document.getElementById('quizTitle').addEventListener('input', (e) => {
+    createdQuiz.title = e.target.value;
+});
+
+document.getElementById('quizSubtitle').addEventListener('input', (e) => {
+    createdQuiz.subtitle = e.target.value;
+});
+
+document.getElementById('quizDescription').addEventListener('input', (e) => {
+    createdQuiz.description = e.target.value;
+});
+
+document.getElementById('quizDuration').addEventListener('input', (e) => {
+    createdQuiz.duration = parseInt(e.target.value);
+});
+
+document.getElementById('saveQuizBtn').addEventListener('click', async () => {
+    if (createdQuiz.questions.length === 0) {
+        showNotification('Ajoutez au moins une question', true);
+        return;
+    }
+    
+    try {
+        // Sauvegarder dans Supabase et obtenir le code
+        const code = await saveQuizToSupabase(createdQuiz);
+        
+        const jsonData = {
+            quiz: createdQuiz
+        };
+        
+        const blob = new Blob([JSON.stringify(jsonData, null, 2)], { type: 'application/json' });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `quiz_${createdQuiz.title.replace(/\s+/g, '_')}_${code}.json`;
+        a.click();
+        URL.revokeObjectURL(url);
+        
+        showNotification(`Quiz téléchargé et sauvegardé avec le code: ${code}`);
+        
+        // Afficher le QR code
+        setTimeout(() => {
+            showQRModal(code);
+        }, 1000);
+        
+    } catch (error) {
+        showNotification('Erreur: ' + error.message, true);
+    }
+});
+
+document.getElementById('previewQuizBtn').addEventListener('click', () => {
+    if (createdQuiz.questions.length === 0) {
+        showNotification('Ajoutez au moins une question', true);
+        return;
+    }
+    
+    createQuizPage.style.display = 'none';
+    startQuiz(createdQuiz);
+});
+
+// ==================== NOTIFICATIONS ====================
+
 function showNotification(message, isError = false) {
     const notification = document.createElement('div');
+    notification.className = 'notification';
+    notification.textContent = message;
     notification.style.cssText = `
         position: fixed;
-        top: 20px;
-        right: 20px;
-        background: ${isError ? '#eb5757' : '#0f7b6c'};
-        color: white;
+        top: 30px;
+        right: 30px;
+        background: ${isError ? '#ff6b6b' : '#4ade80'};
+        color: #000000;
         padding: 16px 24px;
         border-radius: 8px;
-        font-size: 0.95rem;
-        font-weight: 500;
-        z-index: 10000;
+        font-weight: 600;
+        z-index: 100000;
         animation: slideIn 0.3s ease;
+        box-shadow: 0 4px 20px rgba(0, 0, 0, 0.3);
     `;
-    notification.textContent = message;
     
     document.body.appendChild(notification);
     
@@ -421,186 +818,80 @@ function showNotification(message, isError = false) {
     }, 3000);
 }
 
-// ==================== CRÉATION DE QUIZ ====================
+// ==================== DÉMARRAGE QUIZ ====================
 
-const addQuestionBtn = document.getElementById('addQuestionBtn');
-const saveQuizBtn = document.getElementById('saveQuizBtn');
-const previewQuizBtn = document.getElementById('previewQuizBtn');
-const backFromCreateBtn = document.getElementById('backFromCreateBtn');
-
-function showCreateQuizPage() {
-    homepage.style.display = 'none';
-    createQuizPage.style.display = 'block';
-    
-    if (!createdQuiz) {
-        createdQuiz = {
-            title: "Mon Quiz",
-            subtitle: "Description du quiz",
-            description: "Testez vos connaissances",
-            cardImage: "",
-            duration: 300,
-            questions: []
-        };
-        addNewQuestion();
-    }
-    renderQuestions();
-}
-
-function addNewQuestion() {
-    const newQuestion = {
-        id: createdQuiz.questions.length + 1,
-        question: "",
-        answers: ["", "", "", ""],
-        correctAnswer: 0,
-        image: "",
-        answerImages: [
-            "https://images.unsplash.com/photo-1518709268805-4e9042af2176?w=400&h=300&fit=crop",
-            "https://images.unsplash.com/photo-1555949963-aa79dcee981c?w=400&h=300&fit=crop",
-            "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=400&h=300&fit=crop",
-            "https://images.unsplash.com/photo-1544717297-fa95b6ee9643?w=400&h=300&fit=crop"
-        ]
-    };
-    createdQuiz.questions.push(newQuestion);
-    renderQuestions();
-}
-
-function renderQuestions() {
-    const container = document.getElementById('questionsContainer');
-    container.innerHTML = '';
-    
-    createdQuiz.questions.forEach((q, qIndex) => {
-        const questionDiv = document.createElement('div');
-        questionDiv.className = 'question-editor';
-        questionDiv.innerHTML = `
-            <div class="question-header">
-                <span class="question-number">Question ${qIndex + 1}</span>
-                <button class="btn-delete" data-index="${qIndex}">Supprimer</button>
-            </div>
-            <input type="text" class="form-input question-input" data-index="${qIndex}" 
-                   placeholder="Texte de la question" value="${q.question}">
-            <div class="form-group">
-                <label class="form-label">Image de la question (URL)</label>
-                <input type="url" class="form-input question-image-input" data-index="${qIndex}" 
-                       placeholder="https://example.com/image.jpg" value="${q.image}">
-            </div>
-            <div class="answers-editor">
-                ${q.answers.map((ans, aIndex) => `
-                    <div class="answer-editor">
-                        <input type="text" class="form-input answer-input" 
-                               data-qindex="${qIndex}" data-aindex="${aIndex}"
-                               placeholder="Réponse ${String.fromCharCode(65 + aIndex)}" 
-                               value="${ans}">
-                    </div>
-                `).join('')}
-                <div class="form-group">
-                    <label class="form-label">Bonne réponse</label>
-                    <select class="form-input correct-answer-select" data-index="${qIndex}">
-                        <option value="0" ${q.correctAnswer === 0 ? 'selected' : ''}>A</option>
-                        <option value="1" ${q.correctAnswer === 1 ? 'selected' : ''}>B</option>
-                        <option value="2" ${q.correctAnswer === 2 ? 'selected' : ''}>C</option>
-                        <option value="3" ${q.correctAnswer === 3 ? 'selected' : ''}>D</option>
-                    </select>
-                </div>
-            </div>
-        `;
-        container.appendChild(questionDiv);
-    });
-    
-    // Event listeners
-    document.querySelectorAll('.question-input').forEach(input => {
-        input.addEventListener('input', (e) => {
-            const index = parseInt(e.target.dataset.index);
-            createdQuiz.questions[index].question = e.target.value;
-        });
-    });
-    
-    document.querySelectorAll('.question-image-input').forEach(input => {
-        input.addEventListener('input', (e) => {
-            const index = parseInt(e.target.dataset.index);
-            createdQuiz.questions[index].image = e.target.value;
-        });
-    });
-    
-    document.querySelectorAll('.answer-input').forEach(input => {
-        input.addEventListener('input', (e) => {
-            const qIndex = parseInt(e.target.dataset.qindex);
-            const aIndex = parseInt(e.target.dataset.aindex);
-            createdQuiz.questions[qIndex].answers[aIndex] = e.target.value;
-        });
-    });
-    
-    document.querySelectorAll('.correct-answer-select').forEach(select => {
-        select.addEventListener('change', (e) => {
-            const index = parseInt(e.target.dataset.index);
-            createdQuiz.questions[index].correctAnswer = parseInt(e.target.value);
-        });
-    });
-    
-    document.querySelectorAll('.btn-delete').forEach(btn => {
-        btn.addEventListener('click', (e) => {
-            const index = parseInt(e.target.dataset.index);
-            createdQuiz.questions.splice(index, 1);
-            renderQuestions();
-        });
-    });
-}
-
-function updateCreatedQuiz() {
-    createdQuiz.title = document.getElementById('quizTitle').value;
-    createdQuiz.subtitle = document.getElementById('quizSubtitle').value;
-    createdQuiz.description = document.getElementById('quizDescription').value;
-    createdQuiz.duration = parseInt(document.getElementById('quizDuration').value);
-}
-
-function saveQuiz() {
-    updateCreatedQuiz();
-    
-    const quizJson = JSON.stringify({ quiz: createdQuiz }, null, 2);
-    const blob = new Blob([quizJson], { type: 'application/json' });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = `${createdQuiz.title.replace(/\s+/g, '_')}.json`;
-    a.click();
-    
-    showNotification('Quiz téléchargé avec succès !');
-    
-    // Afficher la modal de partage après téléchargement
-    setTimeout(() => {
-        showShareModal(createdQuiz);
-    }, 500);
-}
-
-function previewQuiz() {
-    updateCreatedQuiz();
-    quizData = createdQuiz;
-    startQuiz();
-}
-
-function backToHome() {
-    createQuizPage.style.display = 'none';
-    homepage.style.display = 'block';
-}
-
-addQuestionBtn.addEventListener('click', addNewQuestion);
-saveQuizBtn.addEventListener('click', saveQuiz);
-previewQuizBtn.addEventListener('click', previewQuiz);
-backFromCreateBtn.addEventListener('click', backToHome);
-
-// ==================== QUIZ LOGIC ====================
-
-function startQuiz() {
-    homepage.style.display = 'none';
-    createQuizPage.style.display = 'none';
-    quizpage.style.display = 'block';
-    
+function startQuiz(quiz) {
+    quizData = quiz;
     currentQuestionIndex = 0;
     userAnswers = [];
     elapsedTime = 0;
-    startTime = Date.now();
     
+    homepage.style.display = 'none';
+    createQuizPage.style.display = 'none';
+    resultspage.style.display = 'none';
+    quizpage.style.display = 'block';
+    
+    startTime = Date.now();
     displayQuestion();
     startTimer();
+}
+
+// ==================== MODAL DE CONFIRMATION POUR QUITTER ====================
+
+function showQuitConfirmation() {
+    const modal = document.createElement('div');
+    modal.className = 'quit-modal';
+    modal.innerHTML = `
+        <div class="quit-modal-content">
+            <h2 class="quit-modal-title">Quitter le quiz ?</h2>
+            <p class="quit-modal-message">Votre progression sera perdue.</p>
+            <div class="quit-modal-buttons">
+                <button class="btn-secondary quit-cancel">Continuer le quiz</button>
+                <button class="btn-danger quit-confirm">Quitter</button>
+            </div>
+        </div>
+    `;
+    
+    document.body.appendChild(modal);
+    
+    // Animation d'entrée
+    requestAnimationFrame(() => {
+        modal.classList.add('active');
+    });
+    
+    const cancelBtn = modal.querySelector('.quit-cancel');
+    const confirmBtn = modal.querySelector('.quit-confirm');
+    
+    cancelBtn.addEventListener('click', () => {
+        modal.classList.remove('active');
+        setTimeout(() => modal.remove(), 300);
+    });
+    
+    confirmBtn.addEventListener('click', () => {
+        stopTimer();
+        modal.classList.remove('active');
+        setTimeout(() => {
+            modal.remove();
+            quizpage.style.display = 'none';
+            homepage.style.display = 'block';
+        }, 300);
+    });
+    
+    // Fermer en cliquant à l'extérieur
+    modal.addEventListener('click', (e) => {
+        if (e.target === modal) {
+            modal.classList.remove('active');
+            setTimeout(() => modal.remove(), 300);
+        }
+    });
+}
+
+function quitQuiz() {
+    showQuitConfirmation();
+}
+
+if (quitQuizBtn) {
+    quitQuizBtn.addEventListener('click', quitQuiz);
 }
 
 function displayQuestion() {
@@ -608,6 +899,9 @@ function displayQuestion() {
     
     questionText.textContent = question.question;
     progressDisplay.textContent = `Question ${currentQuestionIndex + 1} / ${quizData.questions.length}`;
+    
+    const questionProgress = ((currentQuestionIndex + 1) / quizData.questions.length) * 100;
+    questionProgressFill.style.width = `${questionProgress}%`;
     
     // Image de la question
     if (question.image) {
@@ -618,29 +912,24 @@ function displayQuestion() {
         questionImage.style.display = 'none';
     }
     
-    // Réponses avec images de fond
+    // Réponses avec images uniformes
     answerCards.forEach((card, index) => {
         const answerText = card.querySelector('.answer-text');
-        answerText.textContent = question.answers[index];
-        card.classList.remove('selected');
+        answerText.textContent = question.answers[index] || '';
         
-        // Image de fond pour la réponse
-        if (question.answerImages && question.answerImages[index]) {
-            card.style.setProperty('--bg-image', `url(${question.answerImages[index]})`);
-        } else {
-            card.style.setProperty('--bg-image', 'none');
-        }
+        card.classList.remove('selected', 'correct', 'incorrect');
     });
     
-    // Barre de progression
-    const progress = ((currentQuestionIndex + 1) / quizData.questions.length) * 100;
-    questionProgressFill.style.width = `${progress}%`;
+    nextBtn.disabled = true;
 }
 
-function selectAnswer(answerIndex) {
+function selectAnswer(index) {
+    userAnswers[currentQuestionIndex] = index;
+    
     answerCards.forEach(card => card.classList.remove('selected'));
-    answerCards[answerIndex].classList.add('selected');
-    userAnswers[currentQuestionIndex] = answerIndex;
+    answerCards[index].classList.add('selected');
+    
+    nextBtn.disabled = false;
 }
 
 function nextQuestion() {
@@ -869,7 +1158,16 @@ document.addEventListener('mousemove', (e) => {
 
 // ==================== INITIALIZATION ====================
 
-window.addEventListener('load', () => {
+window.addEventListener('load', async () => {
     initSupabase();
     loadPresetQuiz();
+    loadImportedQuizzes();
+    
+    // Charger tous les quiz de Supabase
+    await loadAllSupabaseQuizzes();
+    
+    // Vérifier si un code est dans l'URL
+    checkURLForCode();
+    
+    displayImportedQuizzes();
 });
