@@ -146,6 +146,60 @@ async function getAllQuizzesFromSupabase() {
     }
 }
 
+// ==================== FONCTIONS LEADERBOARD ====================
+
+async function saveScoreToSupabase(quizCode, pseudo, score, totalQuestions) {
+    if (!supabaseClient || !quizCode) {
+        console.warn('Supabase ou code quiz non disponible');
+        return false;
+    }
+    
+    try {
+        const { data, error } = await supabaseClient
+            .from('quiz_scores')
+            .insert([{
+                quiz_code: quizCode,
+                pseudo: pseudo,
+                score: score,
+                total_questions: totalQuestions,
+                percentage: Math.round((score / totalQuestions) * 100)
+            }])
+            .select();
+        
+        if (error) throw error;
+        
+        console.log('✓ Score sauvegardé:', data);
+        return true;
+    } catch (error) {
+        console.error('Erreur sauvegarde score:', error);
+        return false;
+    }
+}
+
+async function getLeaderboardFromSupabase(quizCode) {
+    if (!supabaseClient || !quizCode) {
+        throw new Error('Supabase ou code quiz non disponible');
+    }
+    
+    try {
+        const { data, error } = await supabaseClient
+            .from('quiz_scores')
+            .select('pseudo, score, total_questions, percentage, created_at')
+            .eq('quiz_code', quizCode)
+            .order('score', { ascending: false })
+            .order('created_at', { ascending: true })
+            .limit(50);
+        
+        if (error) throw error;
+        
+        console.log('✓ Leaderboard chargé:', data.length, 'scores');
+        return data;
+    } catch (error) {
+        console.error('Erreur chargement leaderboard:', error);
+        throw error;
+    }
+}
+
 // ==================== VARIABLES GLOBALES ====================
 
 let quizData = null;
@@ -159,6 +213,8 @@ let importedQuizzes = [];
 let certificateId = '';
 let currentShareCode = null;
 let allSupabaseQuizzes = [];
+let currentQuizCode = null; // Pour sauvegarder le score
+let allQuizzesLoaded = false; // État du chargement
 
 // ==================== ÉLÉMENTS DOM ====================
 
@@ -169,6 +225,10 @@ const createQuizPage = document.getElementById('createQuizPage');
 const jsonFileInput = document.getElementById('jsonFileInput');
 const importedQuizzesGrid = document.getElementById('importedQuizzesGrid');
 const emptyState = document.getElementById('emptyState');
+
+// Search & Library
+const librarySearchInput = document.getElementById('librarySearchInput');
+const loadAllQuizzesBtn = document.getElementById('loadAllQuizzesBtn');
 
 // Modals
 const shareModal = document.getElementById('shareModal');
@@ -184,6 +244,16 @@ const joinCodeInput = document.getElementById('joinCodeInput');
 const joinQuizBtn = document.getElementById('joinQuizBtn');
 const joinStatus = document.getElementById('joinStatus');
 const joinQuizOpenBtn = document.getElementById('joinQuizOpenBtn');
+
+const leaderboardModal = document.getElementById('leaderboardModal');
+const leaderboardModalClose = document.getElementById('leaderboardModalClose');
+const leaderboardTitle = document.getElementById('leaderboardTitle');
+const leaderboardContent = document.getElementById('leaderboardContent');
+
+const pseudoModal = document.getElementById('pseudoModal');
+const pseudoInput = document.getElementById('pseudoInput');
+const submitScoreBtn = document.getElementById('submitScoreBtn');
+const skipScoreBtn = document.getElementById('skipScoreBtn');
 
 // Boutons
 const presetQuizCard = document.getElementById('presetQuizCard');
@@ -447,11 +517,13 @@ async function loadAllSupabaseQuizzes() {
             }
         }
         
+        allQuizzesLoaded = true;
         displayImportedQuizzes();
         console.log('✓ Quiz Supabase chargés:', uniqueQuizzes.length);
         
     } catch (error) {
         console.error('Erreur chargement quiz Supabase:', error);
+        throw error;
     }
 }
 
@@ -478,8 +550,9 @@ function loadImportedQuizzes() {
 }
 
 function displayImportedQuizzes() {
-    if (importedQuizzes.length === 0) {
+    if (importedQuizzes.length === 0 && !allQuizzesLoaded) {
         emptyState.style.display = 'block';
+        importedQuizzesGrid.innerHTML = '';
         return;
     }
     
@@ -501,12 +574,17 @@ function displayImportedQuizzes() {
             <p class="card-description">${quiz.description || quiz.subtitle || 'Aucune description'}</p>
             <div class="card-footer">
                 <span class="card-meta">${questionsCount} questions · ${duration} min</span>
-                ${code ? `<button class="card-qr-btn" data-code="${code}">QR Code</button>` : ''}
+                <div style="display: flex; gap: 8px;">
+                    ${code ? `<button class="card-scores-btn" data-code="${code}">📊 Scores</button>` : ''}
+                    ${code ? `<button class="card-qr-btn" data-code="${code}">QR Code</button>` : ''}
+                </div>
             </div>
         `;
         
         card.addEventListener('click', (e) => {
-            if (!e.target.classList.contains('card-qr-btn')) {
+            if (!e.target.classList.contains('card-qr-btn') && 
+                !e.target.classList.contains('card-scores-btn')) {
+                currentQuizCode = code; // Sauvegarder le code pour le leaderboard
                 startQuiz(quiz);
             }
         });
@@ -516,6 +594,12 @@ function displayImportedQuizzes() {
             qrBtn.addEventListener('click', (e) => {
                 e.stopPropagation();
                 showQRModal(code);
+            });
+            
+            const scoresBtn = card.querySelector('.card-scores-btn');
+            scoresBtn.addEventListener('click', (e) => {
+                e.stopPropagation();
+                showLeaderboard(code, quiz.title);
             });
         }
         
@@ -528,6 +612,141 @@ function removeImportedQuiz(index) {
     saveImportedQuizzes();
     displayImportedQuizzes();
 }
+
+// ==================== LEADERBOARD FUNCTIONS ====================
+
+async function showLeaderboard(quizCode, quizTitle) {
+    leaderboardModal.classList.add('active');
+    leaderboardTitle.textContent = `Classement - ${quizTitle}`;
+    leaderboardContent.innerHTML = '<p style="text-align: center; color: #888;">Chargement...</p>';
+    
+    try {
+        const scores = await getLeaderboardFromSupabase(quizCode);
+        
+        if (scores.length === 0) {
+            leaderboardContent.innerHTML = `
+                <div class="empty-leaderboard">
+                    <div class="empty-leaderboard-icon">🏆</div>
+                    <p class="empty-leaderboard-text">Aucun score enregistré</p>
+                    <p class="empty-leaderboard-hint">Soyez le premier à compléter ce quiz !</p>
+                </div>
+            `;
+            return;
+        }
+        
+        let tableHTML = `
+            <table class="leaderboard-table">
+                <thead>
+                    <tr>
+                        <th>Position</th>
+                        <th>Pseudo</th>
+                        <th>Score</th>
+                    </tr>
+                </thead>
+                <tbody>
+        `;
+        
+        scores.forEach((score, index) => {
+            const rank = index + 1;
+            let rankClass = 'rank-cell';
+            if (rank === 1) rankClass += ' gold';
+            else if (rank === 2) rankClass += ' silver';
+            else if (rank === 3) rankClass += ' bronze';
+            
+            tableHTML += `
+                <tr>
+                    <td class="${rankClass}">${rank}</td>
+                    <td class="pseudo-cell">${score.pseudo}</td>
+                    <td class="score-cell">${score.score}/${score.total_questions} (${score.percentage}%)</td>
+                </tr>
+            `;
+        });
+        
+        tableHTML += `
+                </tbody>
+            </table>
+        `;
+        
+        leaderboardContent.innerHTML = tableHTML;
+        
+    } catch (error) {
+        leaderboardContent.innerHTML = `
+            <div class="empty-leaderboard">
+                <p class="empty-leaderboard-text">Erreur de chargement</p>
+                <p class="empty-leaderboard-hint">${error.message}</p>
+            </div>
+        `;
+    }
+}
+
+function closeLeaderboard() {
+    leaderboardModal.classList.remove('active');
+}
+
+leaderboardModalClose.addEventListener('click', closeLeaderboard);
+leaderboardModal.addEventListener('click', (e) => {
+    if (e.target === leaderboardModal) {
+        closeLeaderboard();
+    }
+});
+
+// ==================== SEARCH & LOAD ALL FUNCTIONS ====================
+
+function filterQuizzes(searchTerm) {
+    const cards = importedQuizzesGrid.querySelectorAll('.imported-quiz-card');
+    const term = searchTerm.toLowerCase().trim();
+    
+    if (!term) {
+        cards.forEach(card => card.style.display = 'block');
+        return;
+    }
+    
+    cards.forEach(card => {
+        const title = card.querySelector('.card-title').textContent.toLowerCase();
+        const description = card.querySelector('.card-description').textContent.toLowerCase();
+        
+        if (title.includes(term) || description.includes(term)) {
+            card.style.display = 'block';
+        } else {
+            card.style.display = 'none';
+        }
+    });
+}
+
+librarySearchInput.addEventListener('input', (e) => {
+    filterQuizzes(e.target.value);
+});
+
+loadAllQuizzesBtn.addEventListener('click', async () => {
+    if (allQuizzesLoaded) {
+        showNotification('Tous les quiz sont déjà chargés');
+        return;
+    }
+    
+    loadAllQuizzesBtn.textContent = 'Chargement...';
+    loadAllQuizzesBtn.disabled = true;
+    
+    try {
+        await loadAllSupabaseQuizzes();
+        allQuizzesLoaded = true;
+        loadAllQuizzesBtn.textContent = '✓ Tous affichés';
+        showNotification('Quiz chargés avec succès !');
+        
+        setTimeout(() => {
+            loadAllQuizzesBtn.textContent = 'Tout afficher';
+            loadAllQuizzesBtn.disabled = false;
+        }, 2000);
+        
+    } catch (error) {
+        loadAllQuizzesBtn.textContent = 'Erreur';
+        showNotification('Erreur lors du chargement', true);
+        
+        setTimeout(() => {
+            loadAllQuizzesBtn.textContent = 'Tout afficher';
+            loadAllQuizzesBtn.disabled = false;
+        }, 2000);
+    }
+});
 
 // ==================== IMPORT FICHIER JSON ====================
 
@@ -959,9 +1178,6 @@ function hashCode(str) {
 function endQuiz() {
     stopTimer();
     
-    quizpage.style.display = 'none';
-    resultspage.style.display = 'block';
-    
     let correctAnswers = 0;
     quizData.questions.forEach((question, index) => {
         if (userAnswers[index] === question.correctAnswer) {
@@ -970,11 +1186,82 @@ function endQuiz() {
     });
     
     const score = (correctAnswers / quizData.questions.length * 100).toFixed(1);
-    
     certificateId = generateCertificateId();
     
+    // Si le quiz a un code, demander le pseudo pour enregistrer le score
+    if (currentQuizCode) {
+        showPseudoModal(correctAnswers, quizData.questions.length);
+    } else {
+        // Afficher directement les résultats
+        showResultsPage(correctAnswers, quizData.questions.length, score);
+    }
+}
+
+function showPseudoModal(correctAnswers, totalQuestions) {
+    pseudoModal.classList.add('active');
+    pseudoInput.value = '';
+    pseudoInput.focus();
+    
+    const handleSubmit = async () => {
+        const pseudo = pseudoInput.value.trim();
+        
+        if (!pseudo) {
+            showNotification('Veuillez entrer un pseudo', true);
+            return;
+        }
+        
+        submitScoreBtn.textContent = 'Enregistrement...';
+        submitScoreBtn.disabled = true;
+        
+        const success = await saveScoreToSupabase(
+            currentQuizCode,
+            pseudo,
+            correctAnswers,
+            totalQuestions
+        );
+        
+        if (success) {
+            showNotification('Score enregistré ! 🎉');
+        }
+        
+        pseudoModal.classList.remove('active');
+        const score = (correctAnswers / totalQuestions * 100).toFixed(1);
+        showResultsPage(correctAnswers, totalQuestions, score);
+        
+        submitScoreBtn.textContent = 'Enregistrer';
+        submitScoreBtn.disabled = false;
+    };
+    
+    const handleSkip = () => {
+        pseudoModal.classList.remove('active');
+        const score = (correctAnswers / totalQuestions * 100).toFixed(1);
+        showResultsPage(correctAnswers, totalQuestions, score);
+    };
+    
+    // Remove old listeners to avoid duplicates
+    const newSubmitBtn = submitScoreBtn.cloneNode(true);
+    submitScoreBtn.parentNode.replaceChild(newSubmitBtn, submitScoreBtn);
+    
+    const newSkipBtn = skipScoreBtn.cloneNode(true);
+    skipScoreBtn.parentNode.replaceChild(newSkipBtn, skipScoreBtn);
+    
+    // Add new listeners
+    newSubmitBtn.addEventListener('click', handleSubmit);
+    newSkipBtn.addEventListener('click', handleSkip);
+    
+    pseudoInput.addEventListener('keypress', (e) => {
+        if (e.key === 'Enter') {
+            handleSubmit();
+        }
+    });
+}
+
+function showResultsPage(correctAnswers, totalQuestions, score) {
+    quizpage.style.display = 'none';
+    resultspage.style.display = 'block';
+    
     document.getElementById('scoreDisplay').textContent = 
-        `${correctAnswers} / ${quizData.questions.length} (${score}%)`;
+        `${correctAnswers} / ${totalQuestions} (${score}%)`;
     document.getElementById('certificateId').textContent = 
         `ID Certificat: ${certificateId}`;
     
@@ -1134,11 +1421,13 @@ window.addEventListener('load', async () => {
     loadPresetQuiz();
     loadImportedQuizzes();
     
-    // Charger tous les quiz de Supabase
-    await loadAllSupabaseQuizzes();
+    // Ne PAS charger tous les quiz automatiquement
+    // L'utilisateur doit cliquer sur "Tout afficher"
     
     // Vérifier si un code est dans l'URL
     checkURLForCode();
     
+    displayImportedQuizzes();
+});
     displayImportedQuizzes();
 });
