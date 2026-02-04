@@ -206,7 +206,7 @@ const timeProgressFill = document.getElementById('timeProgressFill');
 // ==================== GÉNÉRATION QR CODE ====================
 
 function generateQRCode(code) {
-    const url = `https://wok-vote-nsi.vercel.app/${code}`;
+    const url = `https://wok-vote-nsi.vercel.app/?quiz=${code}`;
     const qrApiUrl = `https://api.qrserver.com/v1/create-qr-code/?size=300x300&data=${encodeURIComponent(url)}`;
     return qrApiUrl;
 }
@@ -226,12 +226,12 @@ async function showQRModal(code) {
             
             <div class="share-code-display">
                 <div class="code-box">${code}</div>
-                <p class="code-hint">https://wok-vote-nsi.vercel.app/${code}</p>
+                <p class="code-hint">https://wok-vote-nsi.vercel.app/?quiz=${code}</p>
             </div>
             
             <div class="share-buttons">
                 <button class="btn-primary" onclick="navigator.clipboard.writeText('${code}'); showNotification('Code copié!')">Copier le code</button>
-                <button class="btn-secondary" onclick="navigator.clipboard.writeText('https://wok-vote-nsi.vercel.app/${code}'); showNotification('Lien copié!')">Copier le lien</button>
+                <button class="btn-secondary" onclick="navigator.clipboard.writeText('https://wok-vote-nsi.vercel.app/?quiz=${code}'); showNotification('Lien copié!')">Copier le lien</button>
             </div>
         </div>
     `;
@@ -241,9 +241,11 @@ async function showQRModal(code) {
 // ==================== DÉTECTION CODE DANS URL ====================
 
 function checkURLForCode() {
-    // Détecter le code dans l'URL (fonctionne en localhost et production)
-    const pathParts = window.location.pathname.split('/').filter(p => p);
-    const potentialCode = pathParts[pathParts.length - 1];
+    // Détecter le code dans les query parameters
+    const urlParams = new URLSearchParams(window.location.search);
+    const potentialCode = urlParams.get('quiz');
+    
+    if (!potentialCode) return;
     
     // Format XXX-XXX ou XXXXXX
     const codeRegex = /^[A-Z0-9]{3}-[A-Z0-9]{3}$|^[A-Z0-9]{6}$/i;
@@ -260,35 +262,21 @@ function checkURLForCode() {
             try {
                 const quiz = await loadQuizFromSupabase(normalizedCode);
                 
-                // Vérifier si déjà importé
-                const alreadyImported = importedQuizzes.some(q => 
-                    JSON.stringify(q.quiz) === JSON.stringify(quiz)
-                );
-                
-                if (!alreadyImported) {
-                    importedQuizzes.push({
-                        quiz: quiz,
-                        code: normalizedCode
-                    });
-                    saveImportedQuizzes();
-                    displayImportedQuizzes();
-                }
-                
-                showNotification('Quiz chargé depuis l\'URL !');
+                showNotification('Quiz chargé ! Lancement...');
                 
                 // Nettoyer l'URL (retour à la racine)
-                const baseUrl = window.location.origin;
+                const baseUrl = window.location.origin + window.location.pathname;
                 window.history.replaceState({}, document.title, baseUrl);
                 
-                // Lancer le quiz automatiquement
+                // Lancer le quiz automatiquement après un court délai
                 setTimeout(() => {
                     startQuiz(quiz);
-                }, 500);
+                }, 800);
                 
             } catch (error) {
                 showNotification('Erreur: ' + error.message, true);
                 // Nettoyer l'URL même en cas d'erreur
-                const baseUrl = window.location.origin;
+                const baseUrl = window.location.origin + window.location.pathname;
                 window.history.replaceState({}, document.title, baseUrl);
             }
         }, 1000);
@@ -351,7 +339,7 @@ async function copyShareCode() {
 function shareViaWhatsApp() {
     if (!currentShareCode) return;
     
-    const message = `Rejoins mon quiz Ctrl+Alt+Histoire !\n\nCode: ${currentShareCode}\nLien: https://wok-vote-nsi.vercel.app/${currentShareCode}\n\nTu as 7 jours pour le faire !`;
+    const message = `Rejoins mon quiz Ctrl+Alt+Histoire !\n\nCode: ${currentShareCode}\nLien: https://wok-vote-nsi.vercel.app/?quiz=${currentShareCode}\n\nTu as 7 jours pour le faire !`;
     const url = `https://wa.me/?text=${encodeURIComponent(message)}`;
     window.open(url, '_blank');
 }
@@ -394,31 +382,14 @@ async function joinQuizWithCode() {
     try {
         const quiz = await loadQuizFromSupabase(code);
         
-        // Vérifier si déjà importé
-        const alreadyImported = importedQuizzes.some(q => 
-            JSON.stringify(q.quiz) === JSON.stringify(quiz)
-        );
-        
-        if (alreadyImported) {
-            joinStatus.textContent = 'Quiz déjà importé!';
-            joinStatus.className = 'join-status error';
-            return;
-        }
-        
-        importedQuizzes.push({
-            quiz: quiz,
-            code: code
-        });
-        
-        saveImportedQuizzes();
-        displayImportedQuizzes();
-        
-        joinStatus.textContent = 'Quiz importé avec succès!';
+        joinStatus.textContent = 'Quiz chargé ! Lancement...';
         joinStatus.className = 'join-status success';
         
         setTimeout(() => {
             closeJoinModal();
-        }, 1500);
+            // Lancer le quiz directement
+            startQuiz(quiz);
+        }, 800);
         
     } catch (error) {
         joinStatus.textContent = 'Erreur: ' + error.message;
