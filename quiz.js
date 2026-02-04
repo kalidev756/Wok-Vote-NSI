@@ -1,6 +1,6 @@
 // ============================================
 // CTRL+ALT+HISTOIRE - QUIZ APPLICATION
-// Version complète avec Supabase + QR Codes
+// Version complète avec Supabase + QR Codes + Leaderboard
 // ============================================
 
 // ==================== CONFIGURATION SUPABASE ====================
@@ -213,8 +213,8 @@ let importedQuizzes = [];
 let certificateId = '';
 let currentShareCode = null;
 let allSupabaseQuizzes = [];
-let currentQuizCode = null; // Pour sauvegarder le score
-let allQuizzesLoaded = false; // État du chargement
+let currentQuizCode = null;
+let allQuizzesLoaded = false;
 
 // ==================== ÉLÉMENTS DOM ====================
 
@@ -311,13 +311,11 @@ async function showQRModal(code) {
 // ==================== DÉTECTION CODE DANS URL ====================
 
 function checkURLForCode() {
-    // Détecter le code dans les query parameters
     const urlParams = new URLSearchParams(window.location.search);
     const potentialCode = urlParams.get('quiz');
     
     if (!potentialCode) return;
     
-    // Format XXX-XXX ou XXXXXX
     const codeRegex = /^[A-Z0-9]{3}-[A-Z0-9]{3}$|^[A-Z0-9]{6}$/i;
     
     if (codeRegex.test(potentialCode)) {
@@ -327,25 +325,21 @@ function checkURLForCode() {
         
         console.log('Code détecté dans l\'URL:', normalizedCode);
         
-        // Attendre que Supabase soit initialisé
         setTimeout(async () => {
             try {
                 const quiz = await loadQuizFromSupabase(normalizedCode);
                 
                 showNotification('Quiz chargé ! Lancement...');
                 
-                // Nettoyer l'URL (retour à la racine)
                 const baseUrl = window.location.origin + window.location.pathname;
                 window.history.replaceState({}, document.title, baseUrl);
                 
-                // Lancer le quiz automatiquement après un court délai
                 setTimeout(() => {
                     startQuiz(quiz);
                 }, 800);
                 
             } catch (error) {
                 showNotification('Erreur: ' + error.message, true);
-                // Nettoyer l'URL même en cas d'erreur
                 const baseUrl = window.location.origin + window.location.pathname;
                 window.history.replaceState({}, document.title, baseUrl);
             }
@@ -457,7 +451,6 @@ async function joinQuizWithCode() {
         
         setTimeout(() => {
             closeJoinModal();
-            // Lancer le quiz directement
             startQuiz(quiz);
         }, 800);
         
@@ -489,7 +482,6 @@ async function loadAllSupabaseQuizzes() {
     try {
         const quizzes = await getAllQuizzesFromSupabase();
         
-        // Filtrer les doublons basés sur le contenu du quiz
         const uniqueQuizzes = [];
         const seenQuizzes = new Set();
         
@@ -503,7 +495,6 @@ async function loadAllSupabaseQuizzes() {
         
         allSupabaseQuizzes = uniqueQuizzes;
         
-        // Ajouter à importedQuizzes s'ils n'existent pas déjà
         for (const item of uniqueQuizzes) {
             const alreadyImported = importedQuizzes.some(q => 
                 JSON.stringify(q.quiz) === JSON.stringify(item.quiz_data)
@@ -575,7 +566,7 @@ function displayImportedQuizzes() {
             <div class="card-footer">
                 <span class="card-meta">${questionsCount} questions · ${duration} min</span>
                 <div style="display: flex; gap: 8px;">
-                    ${code ? `<button class="card-scores-btn" data-code="${code}">📊 Scores</button>` : ''}
+                    ${code ? `<button class="card-scores-btn" data-code="${code}">Scores</button>` : ''}
                     ${code ? `<button class="card-qr-btn" data-code="${code}">QR Code</button>` : ''}
                 </div>
             </div>
@@ -584,7 +575,7 @@ function displayImportedQuizzes() {
         card.addEventListener('click', (e) => {
             if (!e.target.classList.contains('card-qr-btn') && 
                 !e.target.classList.contains('card-scores-btn')) {
-                currentQuizCode = code; // Sauvegarder le code pour le leaderboard
+                currentQuizCode = code;
                 startQuiz(quiz);
             }
         });
@@ -626,7 +617,7 @@ async function showLeaderboard(quizCode, quizTitle) {
         if (scores.length === 0) {
             leaderboardContent.innerHTML = `
                 <div class="empty-leaderboard">
-                    <div class="empty-leaderboard-icon">🏆</div>
+                    <div class="empty-leaderboard-icon">Trophée</div>
                     <p class="empty-leaderboard-text">Aucun score enregistré</p>
                     <p class="empty-leaderboard-hint">Soyez le premier à compléter ce quiz !</p>
                 </div>
@@ -696,21 +687,38 @@ function filterQuizzes(searchTerm) {
     const cards = importedQuizzesGrid.querySelectorAll('.imported-quiz-card');
     const term = searchTerm.toLowerCase().trim();
     
-    if (!term) {
-        cards.forEach(card => card.style.display = 'block');
-        return;
-    }
+    let visibleCount = 0;
     
     cards.forEach(card => {
         const title = card.querySelector('.card-title').textContent.toLowerCase();
-        const description = card.querySelector('.card-description').textContent.toLowerCase();
+        const description = card.querySelector('.card-description')?.textContent.toLowerCase() || '';
         
-        if (title.includes(term) || description.includes(term)) {
+        if (!term || title.includes(term) || description.includes(term)) {
             card.style.display = 'block';
+            visibleCount++;
         } else {
             card.style.display = 'none';
         }
     });
+    
+    // Afficher/masquer le message vide
+    if (visibleCount === 0 && cards.length > 0) {
+        if (!document.getElementById('noResultsMessage')) {
+            const noResults = document.createElement('div');
+            noResults.id = 'noResultsMessage';
+            noResults.className = 'empty-state';
+            noResults.innerHTML = `
+                <p>Aucun quiz trouvé pour "${searchTerm}"</p>
+                <p class="empty-hint">Essayez un autre terme de recherche</p>
+            `;
+            importedQuizzesGrid.appendChild(noResults);
+        }
+    } else {
+        const noResults = document.getElementById('noResultsMessage');
+        if (noResults) {
+            noResults.remove();
+        }
+    }
 }
 
 librarySearchInput.addEventListener('input', (e) => {
@@ -729,7 +737,7 @@ loadAllQuizzesBtn.addEventListener('click', async () => {
     try {
         await loadAllSupabaseQuizzes();
         allQuizzesLoaded = true;
-        loadAllQuizzesBtn.textContent = '✓ Tous affichés';
+        loadAllQuizzesBtn.textContent = 'Tous affichés';
         showNotification('Quiz chargés avec succès !');
         
         setTimeout(() => {
@@ -768,7 +776,6 @@ jsonFileInput.addEventListener('change', (e) => {
                 return;
             }
             
-            // Vérifier si déjà importé
             const alreadyImported = importedQuizzes.some(q => 
                 JSON.stringify(q.quiz) === JSON.stringify(data.quiz)
             );
@@ -806,7 +813,6 @@ async function loadPresetQuiz() {
         const data = await response.json();
         presetQuizData = data.quiz;
         
-        // Appliquer les images uniformes au quiz preset
         if (presetQuizData && presetQuizData.questions) {
             presetQuizData.questions.forEach(question => {
                 question.answerImages = [...ANSWER_IMAGES];
@@ -876,6 +882,10 @@ function renderQuestions() {
                 <label class="form-label">Question</label>
                 <input type="text" class="form-input" value="${q.question}" onchange="updateQuestion(${index}, 'question', this.value)">
             </div>
+            <div class="form-group">
+                <label class="form-label">Lien de l'illustration (URL de l'image)</label>
+                <input type="text" class="form-input" value="${q.image || ''}" placeholder="https://exemple.com/image.jpg" onchange="updateQuestion(${index}, 'image', this.value)">
+            </div>
             <div class="answer-inputs">
                 ${q.answers.map((answer, i) => `
                     <div class="form-group">
@@ -899,8 +909,7 @@ function addQuestion() {
         question: 'Nouvelle question',
         answers: ['Réponse A', 'Réponse B', 'Réponse C', 'Réponse D'],
         correctAnswer: 0,
-        image: '',
-        answerImages: [...ANSWER_IMAGES]
+        image: ''
     });
     renderQuestions();
 }
@@ -920,57 +929,52 @@ function updateAnswer(questionIndex, answerIndex, value) {
 
 document.getElementById('addQuestionBtn').addEventListener('click', addQuestion);
 
-document.getElementById('quizTitle').addEventListener('input', (e) => {
-    createdQuiz.title = e.target.value;
-});
-
-document.getElementById('quizSubtitle').addEventListener('input', (e) => {
-    createdQuiz.subtitle = e.target.value;
-});
-
-document.getElementById('quizDescription').addEventListener('input', (e) => {
-    createdQuiz.description = e.target.value;
-});
-
-document.getElementById('quizDuration').addEventListener('input', (e) => {
-    createdQuiz.duration = parseInt(e.target.value);
-});
-
 document.getElementById('saveQuizBtn').addEventListener('click', async () => {
+    createdQuiz.title = document.getElementById('quizTitle').value;
+    createdQuiz.subtitle = document.getElementById('quizSubtitle').value;
+    createdQuiz.description = document.getElementById('quizDescription').value;
+    createdQuiz.duration = parseInt(document.getElementById('quizDuration').value);
+    
     if (createdQuiz.questions.length === 0) {
         showNotification('Ajoutez au moins une question', true);
         return;
     }
     
+    const quizToExport = {
+        quiz: createdQuiz
+    };
+    
+    // Télécharger le fichier JSON
+    const blob = new Blob([JSON.stringify(quizToExport, null, 2)], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `${createdQuiz.title.replace(/\s+/g, '_')}.json`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+    
+    // Publier le quiz sur Supabase
     try {
-        // Sauvegarder dans Supabase et obtenir le code
         const code = await saveQuizToSupabase(createdQuiz);
+        showNotification(`Quiz téléchargé et publié avec le code: ${code}!`);
         
-        const jsonData = {
-            quiz: createdQuiz
-        };
-        
-        const blob = new Blob([JSON.stringify(jsonData, null, 2)], { type: 'application/json' });
-        const url = URL.createObjectURL(blob);
-        const a = document.createElement('a');
-        a.href = url;
-        a.download = `quiz_${createdQuiz.title.replace(/\s+/g, '_')}_${code}.json`;
-        a.click();
-        URL.revokeObjectURL(url);
-        
-        showNotification(`Quiz téléchargé et sauvegardé avec le code: ${code}`);
-        
-        // Afficher le QR code
-        setTimeout(() => {
-            showQRModal(code);
-        }, 1000);
-        
+        // Afficher le modal de partage automatiquement
+        currentShareCode = code;
+        shareCodeDisplay.textContent = code;
+        shareModal.classList.add('active');
     } catch (error) {
-        showNotification('Erreur: ' + error.message, true);
+        showNotification('Quiz téléchargé mais erreur lors de la publication', true);
     }
 });
 
 document.getElementById('previewQuizBtn').addEventListener('click', () => {
+    createdQuiz.title = document.getElementById('quizTitle').value;
+    createdQuiz.subtitle = document.getElementById('quizSubtitle').value;
+    createdQuiz.description = document.getElementById('quizDescription').value;
+    createdQuiz.duration = parseInt(document.getElementById('quizDuration').value);
+    
     if (createdQuiz.questions.length === 0) {
         showNotification('Ajoutez au moins une question', true);
         return;
@@ -984,31 +988,24 @@ document.getElementById('previewQuizBtn').addEventListener('click', () => {
 
 function showNotification(message, isError = false) {
     const notification = document.createElement('div');
-    notification.className = 'notification';
+    notification.className = `notification ${isError ? 'error' : ''}`;
     notification.textContent = message;
-    notification.style.cssText = `
-        position: fixed;
-        top: 30px;
-        right: 30px;
-        background: ${isError ? '#ff6b6b' : '#4ade80'};
-        color: #000000;
-        padding: 16px 24px;
-        border-radius: 8px;
-        font-weight: 600;
-        z-index: 100000;
-        animation: slideIn 0.3s ease;
-        box-shadow: 0 4px 20px rgba(0, 0, 0, 0.3);
-    `;
     
     document.body.appendChild(notification);
     
     setTimeout(() => {
-        notification.style.animation = 'slideOut 0.3s ease';
-        setTimeout(() => notification.remove(), 300);
+        notification.classList.add('show');
+    }, 10);
+    
+    setTimeout(() => {
+        notification.classList.remove('show');
+        setTimeout(() => {
+            notification.remove();
+        }, 300);
     }, 3000);
 }
 
-// ==================== DÉMARRAGE QUIZ ====================
+// ==================== DÉMARRAGE DU QUIZ ====================
 
 function startQuiz(quiz) {
     quizData = quiz;
@@ -1018,116 +1015,70 @@ function startQuiz(quiz) {
     
     homepage.style.display = 'none';
     createQuizPage.style.display = 'none';
-    resultspage.style.display = 'none';
     quizpage.style.display = 'block';
+    resultspage.style.display = 'none';
     
     startTime = Date.now();
-    displayQuestion();
     startTimer();
-}
-
-// ==================== MODAL DE CONFIRMATION POUR QUITTER ====================
-
-function showQuitConfirmation() {
-    const modal = document.createElement('div');
-    modal.className = 'quit-modal';
-    modal.innerHTML = `
-        <div class="quit-modal-content">
-            <h2 class="quit-modal-title">Quitter le quiz ?</h2>
-            <p class="quit-modal-message">Votre progression sera perdue.</p>
-            <div class="quit-modal-buttons">
-                <button class="btn-secondary quit-cancel">Continuer le quiz</button>
-                <button class="btn-danger quit-confirm">Quitter</button>
-            </div>
-        </div>
-    `;
-    
-    document.body.appendChild(modal);
-    
-    // Animation d'entrée
-    requestAnimationFrame(() => {
-        modal.classList.add('active');
-    });
-    
-    const cancelBtn = modal.querySelector('.quit-cancel');
-    const confirmBtn = modal.querySelector('.quit-confirm');
-    
-    cancelBtn.addEventListener('click', () => {
-        modal.classList.remove('active');
-        setTimeout(() => modal.remove(), 300);
-    });
-    
-    confirmBtn.addEventListener('click', () => {
-        stopTimer();
-        modal.classList.remove('active');
-        setTimeout(() => {
-            modal.remove();
-            quizpage.style.display = 'none';
-            homepage.style.display = 'block';
-        }, 300);
-    });
-    
-    // Fermer en cliquant à l'extérieur
-    modal.addEventListener('click', (e) => {
-        if (e.target === modal) {
-            modal.classList.remove('active');
-            setTimeout(() => modal.remove(), 300);
-        }
-    });
-}
-
-function quitQuiz() {
-    showQuitConfirmation();
-}
-
-if (quitQuizBtn) {
-    quitQuizBtn.addEventListener('click', quitQuiz);
+    displayQuestion();
 }
 
 function displayQuestion() {
     const question = quizData.questions[currentQuestionIndex];
     
     questionText.textContent = question.question;
-    progressDisplay.textContent = `Question ${currentQuestionIndex + 1} / ${quizData.questions.length}`;
     
-    const questionProgress = ((currentQuestionIndex + 1) / quizData.questions.length) * 100;
-    questionProgressFill.style.width = `${questionProgress}%`;
-    
-    // Image de la question
-    if (question.image) {
+    if (question.image && question.image.trim() !== '') {
         questionImage.src = question.image;
         questionImage.style.display = 'block';
     } else {
-        questionImage.src = '';
         questionImage.style.display = 'none';
     }
     
-    // Réponses avec images uniformes
     answerCards.forEach((card, index) => {
-        const answerText = card.querySelector('.answer-text');
-        answerText.textContent = question.answers[index] || '';
-        
+        const answerTextEl = card.querySelector('.answer-text');
+        answerTextEl.textContent = question.answers[index];
         card.classList.remove('selected', 'correct', 'incorrect');
+        
+        // Pas d'image de fond - uniquement les formes géométriques CSS
+        card.style.backgroundImage = 'none';
     });
     
-    nextBtn.disabled = true;
+    nextBtn.style.display = 'none';
+    
+    const progress = ((currentQuestionIndex + 1) / quizData.questions.length) * 100;
+    questionProgressFill.style.width = `${progress}%`;
+    progressDisplay.textContent = `Question ${currentQuestionIndex + 1} / ${quizData.questions.length}`;
 }
 
-function selectAnswer(index) {
-    userAnswers[currentQuestionIndex] = index;
-    
-    answerCards.forEach(card => card.classList.remove('selected'));
-    answerCards[index].classList.add('selected');
-    
-    nextBtn.disabled = false;
-}
-
-function nextQuestion() {
-    if (userAnswers[currentQuestionIndex] === undefined) {
-        showNotification('Veuillez sélectionner une réponse', true);
+function selectAnswer(answerIndex) {
+    if (userAnswers[currentQuestionIndex] !== undefined) {
         return;
     }
     
+    userAnswers[currentQuestionIndex] = answerIndex;
+    const question = quizData.questions[currentQuestionIndex];
+    const correctAnswer = question.correctAnswer;
+    
+    // D'abord marquer la réponse sélectionnée
+    answerCards[answerIndex].classList.add('selected');
+    
+    // Ensuite montrer correct/incorrect après un petit délai
+    setTimeout(() => {
+        answerCards.forEach((card, index) => {
+            card.classList.remove('selected');
+            if (index === correctAnswer) {
+                card.classList.add('correct');
+            } else if (index === answerIndex) {
+                card.classList.add('incorrect');
+            }
+        });
+        
+        nextBtn.style.display = 'block';
+    }, 600);
+}
+
+function nextQuestion() {
     currentQuestionIndex++;
     
     if (currentQuestionIndex < quizData.questions.length) {
@@ -1188,11 +1139,9 @@ function endQuiz() {
     const score = (correctAnswers / quizData.questions.length * 100).toFixed(1);
     certificateId = generateCertificateId();
     
-    // Si le quiz a un code, demander le pseudo pour enregistrer le score
     if (currentQuizCode) {
         showPseudoModal(correctAnswers, quizData.questions.length);
     } else {
-        // Afficher directement les résultats
         showResultsPage(correctAnswers, quizData.questions.length, score);
     }
 }
@@ -1221,7 +1170,7 @@ function showPseudoModal(correctAnswers, totalQuestions) {
         );
         
         if (success) {
-            showNotification('Score enregistré ! 🎉');
+            showNotification('Score enregistré !');
         }
         
         pseudoModal.classList.remove('active');
@@ -1238,14 +1187,12 @@ function showPseudoModal(correctAnswers, totalQuestions) {
         showResultsPage(correctAnswers, totalQuestions, score);
     };
     
-    // Remove old listeners to avoid duplicates
     const newSubmitBtn = submitScoreBtn.cloneNode(true);
     submitScoreBtn.parentNode.replaceChild(newSubmitBtn, submitScoreBtn);
     
     const newSkipBtn = skipScoreBtn.cloneNode(true);
     skipScoreBtn.parentNode.replaceChild(newSkipBtn, skipScoreBtn);
     
-    // Add new listeners
     newSubmitBtn.addEventListener('click', handleSubmit);
     newSkipBtn.addEventListener('click', handleSkip);
     
@@ -1296,6 +1243,57 @@ function restartQuiz() {
     homepage.style.display = 'block';
 }
 
+function showQuitConfirmation() {
+    const modal = document.createElement('div');
+    modal.className = 'quit-modal';
+    modal.innerHTML = `
+        <div class="quit-modal-content">
+            <h2 class="quit-modal-title">Quitter le quiz ?</h2>
+            <p class="quit-modal-message">Votre progression sera perdue.</p>
+            <div class="quit-modal-buttons">
+                <button class="btn-secondary quit-cancel">Continuer le quiz</button>
+                <button class="btn-danger quit-confirm">Quitter</button>
+            </div>
+        </div>
+    `;
+    
+    document.body.appendChild(modal);
+    
+    requestAnimationFrame(() => {
+        modal.classList.add('active');
+    });
+    
+    const cancelBtn = modal.querySelector('.quit-cancel');
+    const confirmBtn = modal.querySelector('.quit-confirm');
+    
+    cancelBtn.addEventListener('click', () => {
+        modal.classList.remove('active');
+        setTimeout(() => modal.remove(), 300);
+    });
+    
+    confirmBtn.addEventListener('click', () => {
+        stopTimer();
+        modal.classList.remove('active');
+        setTimeout(() => {
+            modal.remove();
+            quizpage.style.display = 'none';
+            homepage.style.display = 'block';
+        }, 300);
+    });
+    
+    modal.addEventListener('click', (e) => {
+        if (e.target === modal) {
+            modal.classList.remove('active');
+            setTimeout(() => modal.remove(), 300);
+        }
+    });
+}
+
+function quitQuiz() {
+    showQuitConfirmation();
+}
+
+quitQuizBtn.addEventListener('click', quitQuiz);
 nextBtn.addEventListener('click', nextQuestion);
 restartBtn.addEventListener('click', restartQuiz);
 
@@ -1303,7 +1301,6 @@ answerCards.forEach((card, index) => {
     card.addEventListener('click', () => selectAnswer(index));
 });
 
-// Télécharger le certificat PDF
 downloadCertificateBtn.addEventListener('click', async () => {
     try {
         const script = document.createElement('script');
@@ -1404,8 +1401,6 @@ downloadCertificateBtn.addEventListener('click', async () => {
     }
 });
 
-// ==================== CURSOR HALO ====================
-
 const halo = document.getElementById('halo');
 
 document.addEventListener('mousemove', (e) => {
@@ -1414,20 +1409,12 @@ document.addEventListener('mousemove', (e) => {
     halo.style.transform = `translate3d(calc(${x}px - 50%), calc(${y}px - 50%), 0)`;
 });
 
-// ==================== INITIALIZATION ====================
-
 window.addEventListener('load', async () => {
     initSupabase();
     loadPresetQuiz();
     loadImportedQuizzes();
     
-    // Ne PAS charger tous les quiz automatiquement
-    // L'utilisateur doit cliquer sur "Tout afficher"
-    
-    // Vérifier si un code est dans l'URL
     checkURLForCode();
     
-    displayImportedQuizzes();
-});
     displayImportedQuizzes();
 });
