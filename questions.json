@@ -1,100 +1,249 @@
 {
   "quiz": {
-    "title": "Ctrl+Alt+Histoire",
-    "subtitle": "Quand le code reboot son histoire",
-    "description": "Testez vos connaissances sur l'histoire de l'informatique",
-    "cardImage": "preset-card.jpg",
+    "title": "Le Quiz Loufoque à la Théobabac",
+    "subtitle": "Es-tu prêt à perdre tes derniers neurones ?",
+    "description": "20 questions absurdes pour tester ta logique (ou son absence).",
     "duration": 300,
     "questions": [
       {
         "id": 1,
-        "question": "Quelle est la premiere generation d'ordinateur ?",
+        "question": "Si tu manges une pizza ronde dans une boîte carrée et que tu la coupes en triangles, quel âge a le livreur ?",
         "answers": [
-          "A tubes a vide (1940-1956)",
-          "A transistors (1956-1963)",
-          "A circuits integres (1964-1971)",
-          "A microprocesseurs (1971-present)"
+          "24 ans et il s'appelle Kévin",
+          "L'hypoténuse de la croûte",
+          "Le goût du carton",
+          "42 (la réponse à tout)"
         ],
         "correctAnswer": 0,
-        "image": "",
-        "answerImages": [
-          "carre.jpg",
-          "triangle.avif",
-          "rond_simple.png",
-          "losange.png"
-        ]
+        "image": ""
       },
       {
         "id": 2,
-        "question": "Qui a invente le World Wide Web ?",
+        "question": "Tu préfères avoir des mains à la place des pieds ou des pieds à la place des mains ?",
         "answers": [
-          "Bill Gates",
-          "Steve Jobs",
-          "Tim Berners-Lee",
-          "Mark Zuckerberg"
+          "Mains à la place des pieds (meilleur grip)",
+          "Pieds à la place des mains (pour applaudir du futur)",
+          "Je préfère devenir un pingouin",
+          "C'est quoi un pied ?"
         ],
         "correctAnswer": 2,
-        "image": "",
-        "answerImages": [
-          "carre.jpg",
-          "triangle.avif",
-          "rond_simple.png",
-          "losange.png"
-        ]
+        "image": ""
       },
       {
         "id": 3,
-        "question": "En quelle annee a ete cree le premier ordinateur personnel ?",
+        "question": "Pourquoi les kamikazes portaient-ils des casques ?",
         "answers": [
-          "1975",
-          "1981",
-          "1984",
-          "1990"
+          "Pour la caution de l'avion",
+          "Pour pas se coiffer avant l'impact",
+          "C'est une excellente question, merci de l'avoir posée",
+          "Pour protéger le Bluetooth"
         ],
-        "correctAnswer": 0,
-        "image": "",
-        "answerImages": [
-          "carre.jpg",
-          "triangle.avif",
-          "rond_simple.png",
-          "losange.png"
-        ]
+        "correctAnswer": 2,
+        "image": ""
       },
       {
         "id": 4,
-        "question": "Quel langage de programmation a ete cree en premier ?",
+        "question": "Quel est le bruit d'un mime qui tombe dans la forêt sans que personne ne l'entende ?",
         "answers": [
-          "Python",
-          "Java",
-          "Fortran",
-          "C++"
+          "Un silence en italique",
+          "Le bruit d'une boîte invisible qui casse",
+          "Prout",
+          "C-pas-faux"
         ],
-        "correctAnswer": 2,
-        "image": "",
-        "answerImages": [
-          "carre.jpg",
-          "triangle.avif",
-          "rond_simple.png",
-          "losange.png"
-        ]
+        "correctAnswer": 0,
+        "image": ""
       },
       {
         "id": 5,
-        "question": "Qu'est-ce que l'ENIAC ?",
+        "question": "Si un mot est mal écrit dans le dictionnaire, comment on le sait ?",
         "answers": [
-          "Un systeme d'exploitation",
-          "Le premier ordinateur electronique",
-          "Un langage de programmation",
-          "Un navigateur web"
+          "On demande à Google",
+          "C'est un complot des profs de français",
+          "On attend la mise à jour",
+          "On regarde si le dictionnaire souligne en rouge"
         ],
         "correctAnswer": 1,
-        "image": "",
-        "answerImages": [
-          "carre.jpg",
-          "triangle.avif",
-          "rond_simple.png",
-          "losange.png"
-        ]
+        "image": ""
+      },
+      {
+        "id": 6,
+        "question": "Est-ce que les poissons ont soif ?",
+        "answers": [
+          "Oui, mais ils sont timides",
+          "Seulement après un kebab",
+          "Ils boivent pour oublier qu'ils sont nus",
+          "Glouglou"
+        ],
+        "correctAnswer": 2,
+        "image": ""
+      },
+      {
+        "id": 7,
+        "question": "Si on essaie d'échouer et qu'on réussit, qu'est-ce qu'on a fait ?",
+        "answers": [
+          "Un paradoxe temporel",
+          "On a raté de rater",
+          "On a buggé la matrice",
+          "On mérite un goûter"
+        ],
+        "correctAnswer": 3,
+        "image": ""
+      },
+      {
+        "id": 8,
+        "question": "Pourquoi 'séparé' s'écrit-il en un mot, alors que 'tous ensemble' s'écrit en deux mots ?",
+        "answers": [
+          "Parce que la langue française est une blague",
+          "Pour nous embrouiller",
+          "C'est une décision de l'arbitre",
+          "Obi-Wan Kenobi"
+        ],
+        "correctAnswer": 0,
+        "image": ""
+      },
+      {
+        "id": 9,
+        "question": "Tu préfères avoir une tête de pigeon mais l'intelligence d'Einstein, ou l'inverse ?",
+        "answers": [
+          "Tête de pigeon (pour le style)",
+          "Intelligence d'Einstein (pour calculer mes miettes)",
+          "L'inverse (pour être un génie incompris par les oiseaux)",
+          "Je veux juste du pain"
+        ],
+        "correctAnswer": 3,
+        "image": ""
+      },
+      {
+        "id": 10,
+        "question": "Si Cendrillon avait ses chaussures à sa taille, pourquoi en a-t-elle perdu une ?",
+        "answers": [
+          "Elle avait les pieds moites",
+          "C'était une chaussure en verre de mauvaise qualité",
+          "Elle l'a fait exprès pour pécho",
+          "C'est la faute de la souris"
+        ],
+        "correctAnswer": 2,
+        "image": ""
+      },
+      {
+        "id": 11,
+        "question": "Combien de temps faut-il à un manchot pour monter un meuble IKEA ?",
+        "answers": [
+          "3 jours et une crise de nerfs",
+          "Il n'a pas de mains, t'es méchant",
+          "C'est impossible, il ne lit pas le suédois",
+          "Bof, environ une banquise"
+        ],
+        "correctAnswer": 1,
+        "image": ""
+      },
+      {
+        "id": 12,
+        "question": "Pourquoi les flutes n'ont pas de goût ?",
+        "answers": [
+          "Parce qu'on les mange pas",
+          "Il faut rajouter du sel dans le bec",
+          "Parce que c'est du vent",
+          "Moi je les trouve sucrées"
+        ],
+        "correctAnswer": 2,
+        "image": ""
+      },
+      {
+        "id": 13,
+        "question": "Si une orange s'appelle une orange, pourquoi un citron ne s'appelle pas un jaune ?",
+        "answers": [
+          "Parce que le citron est aigri",
+          "Le marketing",
+          "Le jaune était déjà pris par le pastis",
+          "C'est une question de respect"
+        ],
+        "correctAnswer": 0,
+        "image": ""
+      },
+      {
+        "id": 14,
+        "question": "Peut-on commander un menu enfant si on est un adulte mais très immature ?",
+        "answers": [
+          "Oui, si on porte un bavoir",
+          "Seulement si on veut le jouet",
+          "C'est illégal dans 42 pays",
+          "Non, la police du goût surveille"
+        ],
+        "correctAnswer": 1,
+        "image": ""
+      },
+      {
+        "id": 15,
+        "question": "Que fait un canard qui a perdu ses clés ?",
+        "answers": [
+          "Il fait 'Coin'",
+          "Il appelle un serrurier-cygne",
+          "Il dort dehors",
+          "Il cherche dans son autre bec"
+        ],
+        "correctAnswer": 0,
+        "image": ""
+      },
+      {
+        "id": 16,
+        "question": "Si tu voles avec un avion à la vitesse du son, est-ce que tu entends toujours la radio ?",
+        "answers": [
+          "Oui, mais en retard",
+          "Non, la musique est derrière",
+          "Seulement si c'est du Jul",
+          "Tu entends le silence"
+        ],
+        "correctAnswer": 2,
+        "image": ""
+      },
+      {
+        "id": 17,
+        "question": "Pourquoi on appuie plus fort sur la télécommande quand elle n'a plus de piles ?",
+        "answers": [
+          "Pour l'intimider",
+          "Pour presser le jus des piles",
+          "C'est un réflexe de survie",
+          "Parce qu'on est désespérés"
+        ],
+        "correctAnswer": 1,
+        "image": ""
+      },
+      {
+        "id": 18,
+        "question": "Pourquoi le pain de mie n'a pas de croûte mais a quand même des bords ?",
+        "answers": [
+          "C'est de la magie noire",
+          "Pour pas qu'on se blesse",
+          "C'est la frontière du gluten",
+          "Demande à ta maman"
+        ],
+        "correctAnswer": 2,
+        "image": ""
+      },
+      {
+        "id": 19,
+        "question": "Si un chat tombe toujours sur ses pattes et une tartine sur le côté beurré, qu'est-ce qui se passe si on attache une tartine sur le dos d'un chat ?",
+        "answers": [
+          "Il lévite (moteur infini)",
+          "Le chat mange la tartine",
+          "Explosion nucléaire",
+          "Le chat te griffe, logique"
+        ],
+        "correctAnswer": 0,
+        "image": ""
+      },
+      {
+        "id": 20,
+        "question": "As-tu aimé ce quiz ?",
+        "answers": [
+          "J'ai perdu 4 points de QI",
+          "C'était incroyable",
+          "Je veux être remboursé",
+          "La réponse D"
+        ],
+        "correctAnswer": 3,
+        "image": ""
       }
     ]
   }
