@@ -6,7 +6,7 @@
 // ==================== CONFIGURATION SUPABASE ====================
 
 const SUPABASE_URL = 'https://yolerewyvuihwyinmxgc.supabase.co';
-const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InlvbGVyZXd5dnVpaHd5aW5teGdjIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzAxNDg4NDQsImV4cCI6MjA4NTcyNDg0NH0.hlcDI9hHGHGOZNP8CcFOu9n6WoTBb0WvtEs1FSxa1bg';
+const SUPABASE_ANON_KEY = 'sb_publishable_lH8Y5nQM_ZMF27sk73hr-g_nYbCf0F1';
 
 // Client Supabase
 let supabaseClient = null;
@@ -276,7 +276,7 @@ const timeProgressFill = document.getElementById('timeProgressFill');
 // ==================== GÉNÉRATION QR CODE ====================
 
 function generateQRCode(code) {
-    const url = `https://wok-vote-nsi.vercel.app/?quiz=${code}`;
+    const url = `https://quizhoot-olive.vercel.app/?quiz=${code}`;
     const qrApiUrl = `https://api.qrserver.com/v1/create-qr-code/?size=300x300&data=${encodeURIComponent(url)}`;
     return qrApiUrl;
 }
@@ -296,12 +296,12 @@ async function showQRModal(code) {
             
             <div class="share-code-display">
                 <div class="code-box">${code}</div>
-                <p class="code-hint">https://wok-vote-nsi.vercel.app/?quiz=${code}</p>
+                <p class="code-hint">https://quizhoot-olive.vercel.app/?quiz=${code}</p>
             </div>
             
             <div class="share-buttons">
                 <button class="btn-primary" onclick="navigator.clipboard.writeText('${code}'); showNotification('Code copié!')">Copier le code</button>
-                <button class="btn-secondary" onclick="navigator.clipboard.writeText('https://wok-vote-nsi.vercel.app/?quiz=${code}'); showNotification('Lien copié!')">Copier le lien</button>
+                <button class="btn-secondary" onclick="navigator.clipboard.writeText('https://quizhoot-olive.vercel.app/?quiz=${code}'); showNotification('Lien copié!')">Copier le lien</button>
             </div>
         </div>
     `;
@@ -325,15 +325,9 @@ function checkURLForCode() {
         
         console.log('Code détecté dans l\'URL:', normalizedCode);
         
-        // Afficher immédiatement la notification de préparation
-        showNotification('Quiz en préparation...');
-        
         setTimeout(async () => {
             try {
                 const quiz = await loadQuizFromSupabase(normalizedCode);
-                
-                // Sauvegarder le code du quiz pour pouvoir enregistrer le score
-                currentQuizCode = normalizedCode;
                 
                 showNotification('Quiz chargé ! Lancement...');
                 
@@ -409,7 +403,7 @@ async function copyShareCode() {
 function shareViaWhatsApp() {
     if (!currentShareCode) return;
     
-    const message = `Rejoins mon quiz Ctrl+Alt+Histoire !\n\nCode: ${currentShareCode}\nLien: https://wok-vote-nsi.vercel.app/?quiz=${currentShareCode}\n\nTu as 7 jours pour le faire !`;
+    const message = `Rejoins mon quiz Ctrl+Alt+Histoire !\n\nCode: ${currentShareCode}\nLien: https://quizhoot-olive.vercel.app/?quiz=${currentShareCode}\n\nTu as 7 jours pour le faire !`;
     const url = `https://wa.me/?text=${encodeURIComponent(message)}`;
     window.open(url, '_blank');
 }
@@ -451,9 +445,6 @@ async function joinQuizWithCode() {
     
     try {
         const quiz = await loadQuizFromSupabase(code);
-        
-        // Sauvegarder le code du quiz pour pouvoir enregistrer le score
-        currentQuizCode = code;
         
         joinStatus.textContent = 'Quiz chargé ! Lancement...';
         joinStatus.className = 'join-status success';
